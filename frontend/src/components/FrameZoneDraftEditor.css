@@ -1,0 +1,111 @@
+.sk-frame-zone-draft__frame {
+  position: relative;
+  line-height: 0;
+  border-radius: var(--sk-radius-control);
+  overflow: hidden;
+  border: 1px solid var(--sk-border-strong);
+}
+
+.sk-frame-zone-draft__image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sk-frame-zone-draft__overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+.sk-frame-zone-draft__polygon {
+  stroke: currentColor;
+  fill: currentColor;
+  fill-opacity: 0.18;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.sk-frame-zone-draft__label {
+  fill: currentColor;
+  font-family: var(--sk-font);
+  font-size: 22px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(11, 15, 26, 0.85);
+  stroke-width: 5;
+  stroke-linejoin: round;
+}
+
+.sk-frame-zone-draft__draft-line {
+  fill: none;
+  stroke: var(--sk-accent-strong);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.sk-frame-zone-draft__vertex {
+  fill: var(--sk-accent-strong);
+  stroke: var(--sk-bg);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.sk-frame-zone-draft__toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sk-space-3);
+  margin-top: var(--sk-space-4);
+}
+
+.sk-frame-zone-draft__list {
+  margin-top: var(--sk-space-4);
+}
+
+/* Общие с ZoneEditorPage.css классы карточек зон (.sk-zone-item*) не подключены
+   отдельно — этот компонент используется только на шаге создания проекта, и его
+   собственный CSS-файл сам их определяет, чтобы не тянуть за собой всю страницу. */
+.sk-zone-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sk-space-3);
+  padding: var(--sk-space-3) 0;
+  border-top: 1px solid var(--sk-border);
+}
+
+.sk-zone-item__swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  margin-top: var(--sk-space-2);
+  flex: none;
+}
+
+.sk-zone-item__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.sk-zone-item__fields input,
+.sk-zone-item__fields select {
+  width: 100%;
+  padding: var(--sk-space-2) var(--sk-space-3);
+  border: 1px solid var(--sk-border-strong);
+  border-radius: var(--sk-radius-control);
+  background: var(--sk-surface-muted);
+  color: var(--sk-text);
+  font-family: inherit;
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-zone-item__meta {
+  color: var(--sk-text-faint);
+  font-size: var(--sk-font-size-sm);
+}

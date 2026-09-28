@@ -1,0 +1,174 @@
+.sk-deviation-panel__link {
+  display: inline-block;
+  margin-bottom: var(--sk-space-3);
+  color: var(--sk-accent-strong);
+  text-decoration: none;
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-camera-detail__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sk-space-3);
+  margin-bottom: var(--sk-space-3);
+}
+
+.sk-camera-detail__head h1 {
+  margin: 0 0 2px;
+}
+
+.sk-camera-detail__status {
+  flex-shrink: 0;
+  padding: 4px var(--sk-space-2);
+  border-radius: 999px;
+  background: var(--sk-surface-muted);
+  border: 1px solid var(--sk-border);
+  color: var(--sk-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sk-camera-detail__status--online {
+  color: var(--sk-status-ok);
+  border-color: var(--sk-status-ok);
+  background: var(--sk-status-ok-bg);
+}
+
+.sk-camera-card {
+  padding: var(--sk-space-3);
+}
+
+.sk-camera-card__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sk-space-2);
+  padding-bottom: var(--sk-space-2);
+}
+
+.sk-camera-card__head-time {
+  font-size: 12px;
+  color: var(--sk-text-faint);
+}
+
+.sk-camera-card__history-controls {
+  display: flex;
+  gap: var(--sk-space-2);
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.sk-camera-card__history-btn {
+  padding: 4px 10px;
+  border-radius: var(--sk-radius-control);
+  border: 1px solid var(--sk-border-strong);
+  background: var(--sk-surface-muted);
+  color: var(--sk-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sk-camera-card__history-btn:disabled {
+  opacity: 0.4;
+}
+
+.sk-camera-card__history-btn--live {
+  background: var(--sk-accent-bg);
+  border-color: var(--sk-accent);
+  color: var(--sk-accent-strong);
+}
+
+.sk-camera-card__frame {
+  position: relative;
+  border-radius: var(--sk-radius-control);
+  overflow: hidden;
+  border: 1px solid var(--sk-border);
+  background: var(--sk-surface-muted);
+  min-height: 220px;
+  aspect-ratio: 4 / 3;
+}
+
+.sk-camera-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.sk-camera-card__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--sk-text-faint);
+  font-style: italic;
+}
+
+.sk-bbox {
+  position: absolute;
+  border: 2px solid var(--sk-accent);
+  background: rgba(11, 111, 104, 0.08);
+}
+
+.sk-bbox--ambiguous {
+  border-style: dashed;
+}
+
+.sk-bbox__label {
+  position: absolute;
+  top: -18px;
+  left: -2px;
+  color: white;
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.sk-camera-card__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sk-space-2) var(--sk-space-3);
+  margin-top: var(--sk-space-2);
+  font-size: 12px;
+}
+
+.sk-camera-card__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--sk-text-muted);
+}
+
+.sk-camera-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sk-space-2);
+  margin-top: var(--sk-space-4);
+}
+
+.sk-camera-detail__actions .sk-button {
+  text-decoration: none;
+  flex: 1;
+  text-align: center;
+  min-width: 140px;
+}
+
+.sk-camera-tile--static {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+  padding: 0;
+}
+
+.sk-camera-tile--selected {
+  outline: 2px solid var(--sk-accent);
+}
+
+.sk-current-stage__title {
+  font-weight: 600;
+  margin: 0 0 4px;
+}

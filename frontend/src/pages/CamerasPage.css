@@ -1,0 +1,222 @@
+/* --- Строка-сводка над сеткой камер --- */
+
+.sk-cameras-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sk-space-5);
+  margin-top: var(--sk-space-4);
+  padding: var(--sk-space-3) var(--sk-space-4);
+  background: var(--sk-surface);
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius-panel);
+  box-shadow: var(--sk-shadow-sm);
+}
+
+.sk-cameras-summary__item {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+}
+
+.sk-cameras-summary__item b {
+  color: var(--sk-text);
+}
+
+.sk-cameras-summary__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sk-cameras-summary__dot--all {
+  background: var(--sk-accent);
+}
+
+.sk-cameras-summary__dot--online {
+  background: var(--sk-status-ok);
+  box-shadow: 0 0 0 3px var(--sk-status-ok-bg);
+}
+
+.sk-cameras-summary__dot--offline {
+  background: var(--sk-text-faint);
+}
+
+/* --- Новые карточки камер (в стиле большой карточки камеры на Главной) --- */
+
+.sk-cameras-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--sk-space-4);
+  margin-top: var(--sk-space-4);
+}
+
+.sk-camera-tile {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius-panel);
+  overflow: hidden;
+  background: var(--sk-surface-elevated);
+  box-shadow: var(--sk-shadow-sm);
+  text-decoration: none;
+  color: inherit;
+  transition: transform var(--sk-transition-base), box-shadow var(--sk-transition-base), border-color var(--sk-transition-base);
+}
+
+a.sk-camera-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--sk-shadow-md);
+  border-color: var(--sk-accent);
+}
+
+.sk-camera-tile__media {
+  position: relative;
+  height: 176px;
+  background: var(--sk-surface-muted);
+  overflow: hidden;
+}
+
+.sk-camera-tile__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sk-camera-tile__img--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sk-text-faint);
+  font-size: var(--sk-font-size-sm);
+  font-style: italic;
+}
+
+.sk-camera-tile__dot {
+  position: absolute;
+  top: var(--sk-space-3);
+  left: var(--sk-space-3);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--sk-text-faint);
+  border: 2px solid rgba(11, 15, 26, 0.6);
+}
+
+.sk-camera-tile__dot--online {
+  background: var(--sk-status-ok);
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.25);
+}
+
+.sk-camera-tile__badge {
+  position: absolute;
+  top: var(--sk-space-2);
+  right: var(--sk-space-2);
+}
+
+.sk-camera-tile__scrim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--sk-space-4) var(--sk-space-3) var(--sk-space-2);
+  background: linear-gradient(to top, rgba(6, 9, 16, 0.88), rgba(6, 9, 16, 0));
+  color: #fff;
+}
+
+.sk-camera-tile__name {
+  font-weight: 700;
+  font-size: var(--sk-font-size-base);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-camera-tile__zone {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-camera-tile__footer {
+  padding: var(--sk-space-2) var(--sk-space-3);
+}
+
+.sk-camera-tile__time {
+  font-size: 12px;
+  color: var(--sk-text-faint);
+}
+
+/* --- Шапка страницы камеры (CameraDetailPage) --- */
+
+.sk-camera-detail__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sk-space-4);
+  margin-top: var(--sk-space-2);
+  flex-wrap: wrap;
+}
+
+.sk-camera-detail__head h1 {
+  margin: 0 0 4px;
+}
+
+.sk-camera-detail__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  padding: var(--sk-space-2) var(--sk-space-3);
+  border-radius: 999px;
+  background: var(--sk-surface-muted);
+  border: 1px solid var(--sk-border);
+  color: var(--sk-text-muted);
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sk-camera-detail__status--online {
+  color: var(--sk-status-ok);
+  border-color: var(--sk-status-ok);
+  background: var(--sk-status-ok-bg);
+}
+
+.sk-camera-detail__status-dot {
+  position: static;
+  border: none;
+}
+
+/* Снимки истории — те же плитки, но без ссылки и без hover-приподнятия (это не Link, а просто div). */
+.sk-camera-tile--static {
+  cursor: default;
+}
+
+.sk-camera-tile--static:hover {
+  transform: none;
+  box-shadow: var(--sk-shadow-sm);
+  border-color: var(--sk-border);
+}
+
+/* Примечание: раньше здесь был блок «Старые карточки» с классом .sk-camera-card — он нигде больше не
+   использовался в TSX (мёртвый CSS), но из-за глобальной области видимости CSS он конфликтовал
+   с активным .sk-camera-card в DashboardPage.css (перебивал display:flex на display:block),
+   из-за чего фото камеры на Главной не растягивалось и оставляло большой пустой отступ снизу. */
+
+.sk-camera-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sk-space-3);
+  margin-top: var(--sk-space-3);
+}
+
+.sk-camera-detail__actions .sk-button {
+  text-decoration: none;
+  display: inline-block;
+}

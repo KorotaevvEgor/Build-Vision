@@ -1,0 +1,19 @@
+{
+  "settings_version": "0.0.8",
+  "datasets_dir": "D:\\dev\\datasets",
+  "weights_dir": "D:\\dev\\stroykontrol\\weights",
+  "runs_dir": "D:\\dev\\stroykontrol\\runs",
+  "uuid": "ae6fb086dbe46d3901e19a8a71137a19916d3f389ee7fc31ea91cfddbbf42e5b",
+  "sync": true,
+  "api_key": "",
+  "openai_api_key": "",
+  "clearml": true,
+  "comet": true,
+  "dvc": true,
+  "mlflow": true,
+  "raytune": true,
+  "tensorboard": false,
+  "wandb": false,
+  "vscode_msg": true,
+  "openvino_msg": true
+}

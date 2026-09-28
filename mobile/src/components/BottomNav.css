@@ -1,0 +1,30 @@
+.sk-bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background: var(--sk-surface);
+  border-top: 1px solid var(--sk-border);
+  padding: var(--sk-space-2) var(--sk-space-1) calc(var(--sk-space-2) + env(safe-area-inset-bottom));
+  z-index: 10;
+}
+
+.sk-bottom-nav__link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--sk-text-faint);
+  text-decoration: none;
+  font-size: 11px;
+  padding: var(--sk-space-1) var(--sk-space-2);
+  border-radius: var(--sk-radius-control);
+  flex: 1;
+}
+
+.sk-bottom-nav__link--active {
+  color: var(--sk-accent-strong);
+}

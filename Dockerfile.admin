@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1
+#
+# Лёгкий образ для Django admin — без torch/ultralytics, которые нужны
+# только сервису app. Быстрая сборка, минимальный размер.
+
+FROM python:3.13-slim
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY admin_panel/requirements.txt admin_panel/requirements.txt
+RUN pip install --no-cache-dir -r admin_panel/requirements.txt
+
+COPY manage.py manage.py
+COPY admin_panel/ admin_panel/
+COPY core/ core/
+COPY data/config/ data/config/
+
+EXPOSE 8001
+
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8001"]

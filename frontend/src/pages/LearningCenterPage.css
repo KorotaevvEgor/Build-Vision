@@ -1,0 +1,38 @@
+.sk-learning-page__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--sk-space-4);
+  margin-top: var(--sk-space-5);
+}
+
+.sk-metric-card {
+  text-align: center;
+}
+
+.sk-metric-card__value {
+  font-size: var(--sk-font-size-xl);
+  font-weight: 700;
+}
+
+.sk-metric-card__label {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+  margin-top: var(--sk-space-1);
+}
+
+.sk-learning-page__candidate {
+  padding: var(--sk-space-4) 0;
+  border-top: 1px solid var(--sk-border);
+}
+
+.sk-learning-page__candidate:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.sk-learning-page__candidate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sk-space-3);
+}

@@ -1,0 +1,225 @@
+.sk-map-page__header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sk-space-3);
+}
+
+.sk-map-page__header-row h1 {
+  margin: 0;
+}
+
+.sk-map-page__layout {
+  display: block;
+}
+
+.sk-map-page__layout--editing {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: var(--sk-space-4);
+  align-items: start;
+}
+
+.sk-map-page__map {
+  position: relative;
+  margin-top: var(--sk-space-5);
+  padding: 0;
+  overflow: hidden;
+}
+
+.sk-map-page__layout--editing .sk-map-page__map {
+  margin-top: 0;
+}
+
+.sk-map-vertex-marker span {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fbbf24;
+  border: 2px solid #0b0f1a;
+}
+
+/* --- Редактор карты: боковая панель с зонами/камерами --- */
+
+.sk-map-editor {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-5);
+  max-height: 540px;
+  overflow-y: auto;
+}
+
+.sk-map-editor__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sk-space-2);
+  margin-bottom: var(--sk-space-2);
+}
+
+.sk-map-editor__section-head h2 {
+  margin: 0;
+  font-size: var(--sk-font-size-base);
+}
+
+.sk-map-editor__draw-toolbar {
+  background: var(--sk-surface-muted);
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius-control);
+  padding: var(--sk-space-3);
+  margin-bottom: var(--sk-space-3);
+}
+
+.sk-map-editor__draw-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sk-space-2);
+  margin-top: var(--sk-space-2);
+}
+
+.sk-map-editor__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+  background: var(--sk-surface-muted);
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius-control);
+  padding: var(--sk-space-3);
+  margin-bottom: var(--sk-space-3);
+}
+
+.sk-map-editor__form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-1);
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+}
+
+.sk-map-editor__form input,
+.sk-map-editor__form select {
+  padding: var(--sk-space-2) var(--sk-space-3);
+  border: 1px solid var(--sk-border-strong);
+  border-radius: var(--sk-radius-control);
+  font-size: var(--sk-font-size-base);
+  background: var(--sk-surface);
+  color: var(--sk-text);
+}
+
+.sk-map-editor__form-actions {
+  display: flex;
+  gap: var(--sk-space-2);
+  margin-top: var(--sk-space-1);
+}
+
+.sk-map-editor__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+}
+
+.sk-map-editor__item {
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius-control);
+  padding: var(--sk-space-2) var(--sk-space-3);
+}
+
+.sk-map-editor__item-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-map-editor__swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sk-map-editor__item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sk-space-2);
+  margin-top: var(--sk-space-2);
+}
+
+.sk-map-editor__item-actions .sk-button {
+  padding: var(--sk-space-1) var(--sk-space-3);
+  font-size: 12px;
+}
+
+.sk-map-editor__confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  margin-top: var(--sk-space-2);
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-map-editor__confirm .sk-button {
+  padding: var(--sk-space-1) var(--sk-space-3);
+  font-size: 12px;
+}
+
+.sk-map-editor__hint {
+  margin: var(--sk-space-2) 0 0;
+  font-size: 12px;
+  color: var(--sk-text-faint);
+}
+
+.sk-map-legend {
+  list-style: none;
+  margin: var(--sk-space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sk-space-4);
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+}
+
+.sk-map-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+}
+
+.sk-map-legend span {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.sk-camera-marker span {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #0b0f1a;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+@media (max-width: 860px) {
+  /* Фиксированная высота Leaflet-карты (задаётся инлайн-стилем в MapPage.tsx) на узких
+     экранах слишком высокая -- оставляет мало места под остальной контент. */
+  .sk-map-page__map .leaflet-container {
+    height: 340px !important;
+  }
+
+  .sk-map-page__layout--editing {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sk-map-editor {
+    max-height: none;
+  }
+}

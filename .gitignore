@@ -1,0 +1,76 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+frontend/dist/
+mobile/dist/
+mobile/android/app/build/
+mobile/android/build/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/app/*.keystore
+mobile/*.keystore
+mobile/release/
+
+# Android signing material stays outside the repository.
+*.keystore
+*.jks
+*.p12
+*.pfx
+keystore.properties
+release-signing.properties
+signing.json
+
+# Данные и артефакты (не коммитим исходные снимки заказчика)
+data/raw/
+data/interim/
+data/runs/
+data/uploads/
+*.db
+*.sqlite3
+models/*.pt
+models/*.onnx
+weights/
+frontend/node_modules/
+
+# Локальное
+.env
+.DS_Store
+
+# Логи и pid локального запуска
+*.log
+*.pid
+
+# Исходные архивы материалов хакатона (большие, распакованы рядом)
+hackathon_materials/*.zip
+hackathon_materials/**/*.zip
+~$*.pptx
+~$*.docx
+~$*.xlsx
+
+# Отдельное окружение для обучения моделей и его установочный скрипт
+.venv-ml/
+install_ml.ps1
+
+# Кэш ответов языковой модели
+data/llm_cache/
+
+# Обучающие наборы данных (скачиваются скриптами, в репозиторий не кладём)
+data/datasets/
+
+# Временные скрипты фоновых запусков
+run_autolabel.ps1
+
+# Локальные черновики — остаются только локально, в публичный репозиторий не попадают.
+_reanalyze2.py
+_redesign2.py
+hackathon_materials/PLAN.md
+# Реальная конфигурация nginx конкретного деплоя (имя файла содержит реальный домен,
+# поэтому не указываем его здесь буквально) — см. deploy/nginx.conf.example для публичного шаблона.
+deploy/nginx_*.conf
+!deploy/nginx.conf.example

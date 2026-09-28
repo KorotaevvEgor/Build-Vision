@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <title>BuildVision</title>
+    <script>
+      // Выставляет data-theme до первой отрисовки: без этого при выбранной
+      // светлой теме страница на долю секунды мелькнёт тёмным фоном по умолчанию,
+      // пока React и ThemeProvider не загрузятся.
+      try {
+        var theme = localStorage.getItem("sk-theme");
+        document.documentElement.dataset.theme = theme === "light" ? "light" : "dark";
+      } catch (e) {
+        document.documentElement.dataset.theme = "dark";
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

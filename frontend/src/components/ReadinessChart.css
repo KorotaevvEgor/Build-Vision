@@ -1,0 +1,65 @@
+.sk-readiness-chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.sk-readiness-chart__grid {
+  stroke: var(--sk-border);
+  stroke-width: 1;
+}
+
+.sk-readiness-chart__axis {
+  fill: var(--sk-text-faint);
+  font-family: var(--sk-font);
+  font-size: 11px;
+  text-anchor: end;
+}
+
+.sk-readiness-chart__axis--end {
+  text-anchor: end;
+}
+
+/* Плановые работы — фоном, а не линией: это интервалы, а не значения. */
+.sk-readiness-chart__band {
+  fill: var(--sk-surface-muted);
+  stroke: var(--sk-border);
+  stroke-width: 1;
+}
+
+.sk-readiness-chart__band--current {
+  fill: var(--sk-accent-bg);
+  stroke: var(--sk-accent);
+}
+
+.sk-readiness-chart__band-label {
+  fill: var(--sk-text-faint);
+  font-family: var(--sk-font);
+  font-size: 10px;
+}
+
+.sk-readiness-chart__today {
+  stroke: var(--sk-accent-strong);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+.sk-readiness-chart__today-label {
+  fill: var(--sk-accent-strong);
+  font-family: var(--sk-font);
+  font-size: 10px;
+  text-anchor: end;
+}
+
+.sk-readiness-chart__line {
+  fill: none;
+  stroke: var(--sk-status-ok);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.sk-readiness-chart__dot {
+  fill: var(--sk-status-ok);
+  stroke: var(--sk-bg);
+  stroke-width: 2;
+}

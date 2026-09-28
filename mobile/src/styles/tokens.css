@@ -1,0 +1,100 @@
+/*
+  Дизайн-токены BuildVision (мобильное приложение).
+  Та же палитра, что и в веб-интерфейсе (frontend/src/styles/tokens.css) —
+  единый стиль между вебом и мобильным приложением.
+*/
+:root {
+  /* Поверхности */
+  --sk-bg: #0b0f1a;
+  --sk-surface: #121a2b;
+  --sk-surface-muted: #16203a;
+  --sk-surface-elevated: #18233a;
+  --sk-border: #1f2a3d;
+  --sk-border-strong: #2c3a54;
+
+  /* Текст */
+  --sk-text: #eef2f8;
+  --sk-text-muted: #93a1bd;
+  --sk-text-faint: #647190;
+
+  /* Акцент */
+  --sk-accent: #3b82f6;
+  --sk-accent-strong: #60a5fa;
+  --sk-accent-bg: #1c2c4d;
+
+  /* Статусы */
+  --sk-status-ok: #34d399;
+  --sk-status-ok-bg: #113328;
+  --sk-status-warning: #fbbf24;
+  --sk-status-warning-bg: #3a2c0f;
+  --sk-status-unknown: #93a1bd;
+  --sk-status-unknown-bg: #1c2333;
+  --sk-status-danger: #f87171;
+  --sk-status-danger-bg: #3a1414;
+
+  /* Цвет по классам техники */
+  --sk-class-excavator: #34d399;
+  --sk-class-dump-truck: #f87171;
+  --sk-class-mobile-crane: #fbbf24;
+  --sk-class-crane-manipulator: #fbbf24;
+  --sk-class-concrete-mixer: #c084fc;
+  --sk-class-bulldozer: #22d3ee;
+  --sk-class-road-roller: #22d3ee;
+  --sk-class-truck: #60a5fa;
+  --sk-class-unknown: #647190;
+
+  /* Типографика */
+  --sk-font: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --sk-font-size-sm: 13px;
+  --sk-font-size-base: 15px;
+  --sk-font-size-lg: 18px;
+  --sk-font-size-xl: 24px;
+  --sk-font-size-xxl: 32px;
+
+  /* Сетка отступов 4/8px */
+  --sk-space-1: 4px;
+  --sk-space-2: 8px;
+  --sk-space-3: 12px;
+  --sk-space-4: 16px;
+  --sk-space-5: 24px;
+  --sk-space-6: 32px;
+  --sk-space-8: 48px;
+
+  /* Скругления */
+  --sk-radius-control: 10px;
+  --sk-radius-panel: 14px;
+
+  /* Тени */
+  --sk-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --sk-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.36);
+
+  /* Анимации */
+  --sk-transition-fast: 160ms ease;
+  --sk-transition-base: 200ms ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--sk-bg);
+  color: var(--sk-text);
+  font-family: var(--sk-font);
+  font-size: var(--sk-font-size-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  /* Безопасные отступы под нативные вырезы/панели телефона. */
+  padding-top: env(safe-area-inset-top);
+}
+
+button {
+  font-family: inherit;
+}

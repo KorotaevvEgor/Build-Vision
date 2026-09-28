@@ -1,0 +1,32 @@
+.sk-mini-site-map {
+  position: relative;
+  height: 220px;
+  border-radius: var(--sk-radius-control);
+  overflow: hidden;
+  background: var(--sk-surface-muted);
+}
+
+.sk-mini-site-map--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sk-text-faint);
+  font-size: var(--sk-font-size-sm);
+  font-style: italic;
+}
+
+.sk-mini-site-map__flat {
+  height: 100%;
+  width: 100%;
+  box-shadow: var(--sk-shadow-md);
+}
+
+.sk-mini-site-map__camera span {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--sk-accent-strong);
+  border: 2px solid #0b0f1a;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
+}

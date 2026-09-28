@@ -1,0 +1,84 @@
+.sk-setting__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sk-space-2);
+  margin-bottom: var(--sk-space-2);
+}
+
+.sk-setting__head label {
+  font-weight: 600;
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-setting__value {
+  font-variant-numeric: tabular-nums;
+  color: var(--sk-accent-strong);
+}
+
+.sk-setting input[type="range"] {
+  width: 100%;
+  accent-color: var(--sk-accent);
+}
+
+.sk-setting select {
+  width: 100%;
+}
+
+.sk-setting__hint {
+  margin-top: var(--sk-space-2);
+  font-size: 12px;
+  color: var(--sk-text-muted);
+  line-height: 1.5;
+}
+
+.sk-setting__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-3);
+  margin-top: var(--sk-space-4);
+  flex-wrap: wrap;
+}
+
+.sk-setting__saved {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-status-ok);
+  font-weight: 600;
+}
+
+.sk-settings-danger {
+  margin-top: var(--sk-space-4);
+  border-color: var(--sk-status-danger);
+}
+
+.sk-settings-danger h2 {
+  margin: 0 0 var(--sk-space-2);
+  color: var(--sk-status-danger);
+}
+
+.sk-settings-danger__trigger,
+.sk-settings-danger__confirm-btn {
+  margin-top: var(--sk-space-3);
+}
+
+.sk-settings-danger__confirm {
+  margin-top: var(--sk-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+}
+
+.sk-settings-danger__confirm input[type="text"] {
+  width: 100%;
+  padding: var(--sk-space-2) var(--sk-space-3);
+  border: 1px solid var(--sk-border-strong);
+  border-radius: var(--sk-radius-control);
+  font-size: var(--sk-font-size-base);
+  background: var(--sk-surface);
+  color: var(--sk-text);
+}
+
+.sk-settings-danger__actions {
+  display: flex;
+  gap: var(--sk-space-3);
+}

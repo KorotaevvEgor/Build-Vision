@@ -1,0 +1,262 @@
+.sk-analysis-page__grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: var(--sk-space-5);
+  align-items: start;
+}
+
+.sk-analysis-page__result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-4);
+}
+
+.sk-class-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: var(--sk-space-2);
+}
+
+.sk-explain-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--sk-accent-strong);
+}
+
+.sk-explain-chain {
+  margin: var(--sk-space-3) 0 0;
+  padding-left: var(--sk-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+}
+
+.sk-evidence-thumb {
+  width: 100%;
+  max-width: 320px;
+  border-radius: var(--sk-radius-control);
+  border: 1px solid var(--sk-border);
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .sk-analysis-page__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sk-analysis-page__preview {
+  position: relative;
+  margin: var(--sk-space-3) 0;
+  border-radius: var(--sk-radius-control);
+  overflow: hidden;
+  border: 1px solid var(--sk-border);
+}
+
+.sk-analysis-page__preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sk-bbox {
+  position: absolute;
+  border: 2px solid var(--sk-accent);
+  background: rgba(11, 111, 104, 0.08);
+}
+
+.sk-bbox--ambiguous {
+  border-color: var(--sk-status-warning);
+  background: rgba(183, 121, 31, 0.1);
+  border-style: dashed;
+}
+
+.sk-bbox--distractor {
+  border-color: var(--sk-text-faint);
+  background: transparent;
+}
+
+.sk-bbox__label {
+  position: absolute;
+  top: -20px;
+  left: -2px;
+  background: inherit;
+  background-color: var(--sk-accent);
+  color: white;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.sk-bbox--ambiguous .sk-bbox__label {
+  background-color: var(--sk-status-warning);
+}
+
+.sk-analysis-page__error {
+  color: var(--sk-status-danger);
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-analysis-page__overall {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+}
+
+.sk-stage-card {
+  /* Теперь отдельная карточка на каждый этап (sk-panel), а не секция внутри одного панеля. */
+}
+
+.sk-stage-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sk-space-3);
+}
+
+.sk-stage-card__header h3 {
+  margin: 0;
+  font-size: var(--sk-font-size-base);
+}
+
+.sk-stage-card__meta {
+  color: var(--sk-text-muted);
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-stage-card__critical {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-status-danger);
+  border-left: 2px solid var(--sk-status-danger);
+  padding-left: var(--sk-space-3);
+  margin: var(--sk-space-3) 0;
+}
+
+/* --- Оценка стадии и готовности по самому снимку --- */
+
+.sk-vision-card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sk-space-3);
+}
+
+.sk-vision-card__header h2 {
+  margin: 0;
+}
+
+.sk-vision-card__confidence {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-vision-card__stage {
+  font-size: var(--sk-font-size-lg);
+  margin: var(--sk-space-2) 0 var(--sk-space-4);
+}
+
+.sk-vision-card__evidence {
+  margin: var(--sk-space-2) 0 var(--sk-space-3);
+  padding-left: var(--sk-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-1);
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-readiness {
+  margin-bottom: var(--sk-space-4);
+}
+
+.sk-readiness__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+  margin-bottom: var(--sk-space-2);
+}
+
+.sk-readiness__head strong {
+  color: var(--sk-text);
+  font-size: var(--sk-font-size-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-readiness__track {
+  height: 6px;
+  background: var(--sk-surface-muted);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.sk-readiness__fill {
+  height: 100%;
+  background: var(--sk-accent);
+  transition: width var(--sk-transition-base);
+}
+
+/* --- Отклонения, видные только через зоны кадра --- */
+
+.sk-zone-finding {
+  margin-top: var(--sk-space-3);
+  padding: var(--sk-space-3) var(--sk-space-4);
+  border-radius: var(--sk-radius-control);
+  border-left: 3px solid var(--sk-status-unknown);
+  background: var(--sk-surface-muted);
+}
+
+.sk-zone-finding h3 {
+  margin: 0 0 var(--sk-space-1);
+  font-size: var(--sk-font-size-base);
+}
+
+.sk-zone-finding p {
+  margin: 0;
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+}
+
+.sk-zone-finding--critical {
+  border-left-color: var(--sk-status-danger);
+  background: var(--sk-status-danger-bg);
+}
+
+.sk-zone-finding--warning {
+  border-left-color: var(--sk-status-warning);
+  background: var(--sk-status-warning-bg);
+}
+
+.sk-zone-finding--info {
+  border-left-color: var(--sk-accent);
+}
+
+/* --- Расхождение между снимком и графиком --- */
+
+.sk-mismatch-card {
+  border-left: 3px solid var(--sk-status-warning);
+}
+
+.sk-mismatch-card h2 {
+  margin: 0 0 var(--sk-space-2);
+  font-size: var(--sk-font-size-base);
+  color: var(--sk-status-warning);
+}
+
+/* --- Заключение языковой модели --- */
+
+.sk-conclusion-card h2 {
+  margin: 0 0 var(--sk-space-3);
+  font-size: var(--sk-font-size-base);
+}
+
+.sk-conclusion-card__text {
+  margin: 0 0 var(--sk-space-3);
+  line-height: 1.65;
+}

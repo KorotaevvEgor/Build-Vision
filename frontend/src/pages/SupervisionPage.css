@@ -1,0 +1,199 @@
+.sk-supervision {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.sk-supervision__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sk-space-4);
+  flex-wrap: wrap;
+}
+
+.sk-supervision__head h1 {
+  margin: 0 0 var(--sk-space-1);
+}
+
+.sk-supervision__hello {
+  margin: 0;
+  color: var(--sk-text-muted);
+}
+
+.sk-supervision__head .sk-button {
+  text-decoration: none;
+  flex: none;
+}
+
+/* --- Итоговые числа --- */
+
+.sk-supervision__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--sk-space-3);
+  margin: var(--sk-space-5) 0;
+}
+
+.sk-metric {
+  background: var(--sk-surface);
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius-panel);
+  padding: var(--sk-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-1);
+}
+
+.sk-metric strong {
+  font-size: var(--sk-font-size-xxl);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-metric__label {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-faint);
+}
+
+.sk-metric__sub {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+}
+
+/* Главное число экрана выделено акцентом: ради него инспектор сюда и заходит. */
+.sk-metric--accent {
+  border-color: var(--sk-accent);
+  background: var(--sk-accent-bg);
+}
+
+.sk-metric--accent strong {
+  color: var(--sk-accent-strong);
+}
+
+/* --- Строка объекта --- */
+
+.sk-supervision__stale {
+  border-left: 3px solid var(--sk-status-warning);
+  margin-bottom: var(--sk-space-5);
+}
+
+.sk-supervision__stale h2 {
+  margin-top: 0;
+  font-size: var(--sk-font-size-lg);
+}
+
+.sk-supervision__stale ul {
+  margin: var(--sk-space-3) 0 0;
+  padding-left: var(--sk-space-5);
+  font-size: var(--sk-font-size-sm);
+  line-height: 1.7;
+}
+
+.sk-supervision__stale a {
+  color: var(--sk-accent-strong);
+}
+
+.sk-object-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+}
+
+.sk-object-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(4, minmax(130px, 1fr));
+  gap: var(--sk-space-4);
+  align-items: start;
+  padding: var(--sk-space-4);
+  background: var(--sk-surface);
+  border: 1px solid var(--sk-border);
+  /* Статус по графику — торцом слева: цвет считывается до чтения текста. */
+  border-left: 3px solid var(--sk-border-strong);
+  border-radius: var(--sk-radius-panel);
+  text-decoration: none;
+  color: var(--sk-text);
+  transition: border-color var(--sk-transition-fast), background var(--sk-transition-fast);
+}
+
+.sk-object-row:hover {
+  background: var(--sk-surface-muted);
+  border-color: var(--sk-accent);
+}
+
+.sk-object-row--behind {
+  border-left-color: var(--sk-status-danger);
+}
+
+.sk-object-row--on_track {
+  border-left-color: var(--sk-status-ok);
+}
+
+.sk-object-row--ahead {
+  border-left-color: var(--sk-accent-strong);
+}
+
+@media (max-width: 1100px) {
+  .sk-object-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .sk-object-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.sk-object-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-1);
+  min-width: 0;
+}
+
+.sk-object-row__name {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+}
+
+.sk-object-row__flag {
+  color: var(--sk-status-danger);
+  font-size: 10px;
+}
+
+.sk-object-row__stage {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+}
+
+.sk-object-row__metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sk-object-row__metric strong {
+  font-size: var(--sk-font-size-base);
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-object-row__label {
+  font-size: 12px;
+  color: var(--sk-text-faint);
+}
+
+.sk-object-row__sub {
+  font-size: 12px;
+  color: var(--sk-text-faint);
+}
+
+.sk-object-row__danger {
+  color: var(--sk-status-danger);
+}
+
+.sk-object-row__muted {
+  color: var(--sk-text-faint);
+}

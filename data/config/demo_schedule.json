@@ -1,0 +1,128 @@
+{
+  "is_demo": true,
+  "note": "Даты, иерархия и связи предшествования придуманы для демонстрации: в исходных материалах ТЗ есть только справочник видов работ без календаря. Коды и названия работ взяты из works_catalog.csv без изменений. Связи заданы только типа «окончание-начало» — других типов в материалах заказчика нет.",
+  "source_catalog": "data/config/works_catalog.csv",
+  "stages": [
+    {
+      "stage_id": "stage-podzemnaya-chast",
+      "work_code": "12.3.",
+      "work_name": "Подземная часть",
+      "zone_id": "zone-a",
+      "start_date": "2026-09-10",
+      "end_date": "2026-10-12",
+      "note": "Укрупнённая работа: собственных правил техники не имеет, её сроки складываются из вложенных работ."
+    },
+    {
+      "stage_id": "stage-zemlyanye-raboty",
+      "work_code": "12.3.7.",
+      "work_name": "Земляные работы",
+      "zone_id": "zone-a",
+      "parent_stage_id": "stage-podzemnaya-chast",
+      "start_date": "2026-09-10",
+      "end_date": "2026-09-22"
+    },
+    {
+      "stage_id": "stage-kotlovan",
+      "work_code": "12.3.1.",
+      "work_name": "Устройство котлована",
+      "zone_id": "zone-a",
+      "parent_stage_id": "stage-zemlyanye-raboty",
+      "start_date": "2026-09-10",
+      "end_date": "2026-09-22",
+      "technology_assumption": "Разработка грунта экскаватором с вывозом самосвалами — один из возможных вариантов, не единственно допустимый.",
+      "note": "Код есть в исходном справочнике без искажений (родитель 12.3, лист 47)."
+    },
+    {
+      "stage_id": "stage-fundament",
+      "work_code": "12.3.4.",
+      "work_name": "Устройство фундамента",
+      "zone_id": "zone-a",
+      "parent_stage_id": "stage-podzemnaya-chast",
+      "start_date": "2026-09-23",
+      "end_date": "2026-10-12"
+    },
+    {
+      "stage_id": "stage-beton-podgotovka",
+      "work_code": "",
+      "work_name": "Устройство бетонной подготовки",
+      "parent_work_code": "12.3.4.",
+      "zone_id": "zone-a",
+      "parent_stage_id": "stage-fundament",
+      "predecessor_ids": ["stage-kotlovan"],
+      "start_date": "2026-09-23",
+      "end_date": "2026-09-26",
+      "technology_assumption": "Поставка готовой бетонной смеси автобетоносмесителями — один из возможных вариантов.",
+      "note": "В справочнике эта строка без собственного кода — дочерняя работа кода 12.3.4. «Устройство фундамента» (лист 54)."
+    },
+    {
+      "stage_id": "stage-armokarkas",
+      "work_code": "",
+      "work_name": "Устройство армокаркаса фундаментной плиты",
+      "parent_work_code": "12.3.4.",
+      "zone_id": "zone-a",
+      "parent_stage_id": "stage-fundament",
+      "predecessor_ids": ["stage-beton-podgotovka"],
+      "start_date": "2026-09-27",
+      "end_date": "2026-10-05",
+      "technology_assumption": "Подача арматурных каркасов автокраном — один из возможных вариантов."
+    },
+    {
+      "stage_id": "stage-betonirovanie-plity",
+      "work_code": "",
+      "work_name": "Бетонирование фундаментной плиты",
+      "parent_work_code": "12.3.4.",
+      "zone_id": "zone-a",
+      "parent_stage_id": "stage-fundament",
+      "predecessor_ids": ["stage-armokarkas"],
+      "start_date": "2026-10-06",
+      "end_date": "2026-10-12",
+      "technology_assumption": "Укладка товарного бетона из автобетоносмесителей — один из возможных вариантов."
+    },
+    {
+      "stage_id": "stage-blagoustroystvo",
+      "work_code": "12.7.1.",
+      "work_name": "Благоустройство территории",
+      "zone_id": "zone-b",
+      "start_date": "2026-09-15",
+      "end_date": "2026-10-22",
+      "note": "Укрупнённая работа второй зоны."
+    },
+    {
+      "stage_id": "stage-uplotnenie-grunta",
+      "work_code": "",
+      "work_name": "Уплотнение грунта",
+      "parent_work_code": "12.3.7.",
+      "zone_id": "zone-b",
+      "parent_stage_id": "stage-blagoustroystvo",
+      "start_date": "2026-09-15",
+      "end_date": "2026-09-18",
+      "technology_assumption": "Уплотнение катком — один из возможных вариантов технологии.",
+      "note": "В справочнике эта строка без собственного кода — дочерняя работа кода 12.3.7. «Земляные работы» (лист 68)."
+    },
+    {
+      "stage_id": "stage-osnovanie-proezdov",
+      "work_code": "",
+      "work_name": "Устройство основания проездов",
+      "parent_work_code": "12.7.1.",
+      "zone_id": "zone-b",
+      "parent_stage_id": "stage-blagoustroystvo",
+      "predecessor_ids": ["stage-uplotnenie-grunta"],
+      "start_date": "2026-09-19",
+      "end_date": "2026-09-30",
+      "technology_assumption": "Отсыпка щебёночного основания с уплотнением катком — один из возможных вариантов."
+    },
+    {
+      "stage_id": "stage-asfaltirovanie",
+      "work_code": "",
+      "work_name": "Устройство асфальтобетонного покрытия проездов",
+      "parent_work_code": "12.7.1.",
+      "zone_id": "zone-b",
+      "parent_stage_id": "stage-blagoustroystvo",
+      "predecessor_ids": ["stage-osnovanie-proezdov", "stage-betonirovanie-plity"],
+      "start_date": "2026-10-13",
+      "end_date": "2026-10-22",
+      "technology_assumption": "Укладка асфальтобетона с уплотнением катком — один из возможных вариантов.",
+      "note": "Завершающая работа демонстрационного графика: её окончание и есть дата сдачи объекта."
+    }
+  ]
+}

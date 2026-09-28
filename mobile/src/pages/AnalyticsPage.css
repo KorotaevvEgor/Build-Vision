@@ -1,0 +1,137 @@
+.sk-analytics-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-4);
+}
+
+.sk-analytics-page > h1 {
+  margin-bottom: 0;
+}
+
+.sk-a-header__note {
+  margin: 0;
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-faint);
+}
+
+.sk-a-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sk-space-2);
+}
+
+.sk-a-stat {
+  padding: var(--sk-space-3);
+}
+
+.sk-a-stat__value {
+  font-size: var(--sk-font-size-lg);
+  font-weight: 700;
+}
+
+.sk-a-stat__label {
+  font-size: 11px;
+  color: var(--sk-text-muted);
+}
+
+.sk-a-stat__hint {
+  font-size: 10px;
+  color: var(--sk-text-faint);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-a-stat--ok .sk-a-stat__value {
+  color: var(--sk-status-ok);
+}
+.sk-a-stat--warning .sk-a-stat__value {
+  color: var(--sk-status-warning);
+}
+.sk-a-stat--danger .sk-a-stat__value {
+  color: var(--sk-status-danger);
+}
+
+.sk-a-panel-link {
+  display: inline-block;
+  margin-top: var(--sk-space-3);
+  color: var(--sk-accent-strong);
+  text-decoration: none;
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+}
+
+.sk-a-stage-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-3);
+}
+
+.sk-a-stage-row__top {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sk-space-2);
+  margin-bottom: 4px;
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-a-stage-row__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-a-stage-row__percent {
+  font-weight: 700;
+  color: var(--sk-text-muted);
+  flex-shrink: 0;
+}
+
+.sk-a-events-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+}
+
+.sk-a-event {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sk-space-2);
+}
+
+.sk-a-event-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.sk-a-event-dot--ok {
+  background: var(--sk-status-ok);
+}
+.sk-a-event-dot--warning {
+  background: var(--sk-status-warning);
+}
+.sk-a-event-dot--danger {
+  background: var(--sk-status-danger);
+}
+.sk-a-event-dot--info {
+  background: var(--sk-accent);
+}
+
+.sk-a-event__title {
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-a-events__time {
+  font-size: 11px;
+  color: var(--sk-text-faint);
+}

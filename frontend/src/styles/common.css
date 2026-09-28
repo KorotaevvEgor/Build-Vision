@@ -1,0 +1,181 @@
+.sk-panel {
+  background: var(--sk-surface);
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius-panel);
+  padding: var(--sk-space-5);
+  box-shadow: var(--sk-shadow-sm);
+}
+
+.sk-panel--error {
+  border-color: var(--sk-status-danger);
+  color: var(--sk-status-danger);
+  background: var(--sk-status-danger-bg);
+}
+
+.sk-demo-note {
+  color: var(--sk-text-muted);
+  font-size: var(--sk-font-size-sm);
+  background: var(--sk-surface-muted);
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius-control);
+  padding: var(--sk-space-3) var(--sk-space-4);
+  margin: var(--sk-space-3) 0 0;
+}
+
+.sk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-table th {
+  text-align: left;
+  padding: var(--sk-space-2) var(--sk-space-3);
+  color: var(--sk-text-faint);
+  font-weight: 600;
+  border-bottom: 1px solid var(--sk-border);
+}
+
+.sk-table td {
+  padding: var(--sk-space-3);
+  border-bottom: 1px solid var(--sk-border);
+  vertical-align: top;
+}
+
+.sk-table__muted {
+  color: var(--sk-text-muted);
+}
+
+.sk-zone-list {
+  list-style: none;
+  margin: var(--sk-space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-1);
+}
+
+.sk-zone-list__item {
+  width: 100%;
+  text-align: left;
+  padding: var(--sk-space-2) var(--sk-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--sk-radius-control);
+  background: transparent;
+  color: var(--sk-text);
+  cursor: pointer;
+  font-size: var(--sk-font-size-base);
+  transition: background var(--sk-transition-fast);
+}
+
+.sk-zone-list__item:hover {
+  background: var(--sk-surface-muted);
+}
+
+.sk-zone-list__item--active {
+  background: var(--sk-accent-bg);
+  border-color: var(--sk-accent);
+  color: var(--sk-accent-strong);
+  font-weight: 600;
+}
+
+.sk-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-1);
+  margin-bottom: var(--sk-space-4);
+}
+
+.sk-field label {
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+  color: var(--sk-text-muted);
+}
+
+.sk-field input[type="date"],
+.sk-field input[type="text"],
+.sk-field input[type="password"],
+.sk-field input:not([type]),
+.sk-field select {
+  padding: var(--sk-space-2) var(--sk-space-3);
+  border: 1px solid var(--sk-border-strong);
+  border-radius: var(--sk-radius-control);
+  font-size: var(--sk-font-size-base);
+  background: var(--sk-surface);
+  color: var(--sk-text);
+}
+
+.sk-field input:focus-visible,
+.sk-field select:focus-visible {
+  outline: 2px solid var(--sk-accent);
+  outline-offset: 1px;
+}
+
+.sk-field__hint {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-faint);
+  line-height: 1.5;
+}
+
+.sk-field__hint a {
+  color: var(--sk-accent-strong);
+}
+
+.sk-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+}
+
+.sk-button {
+  padding: var(--sk-space-2) var(--sk-space-5);
+  border-radius: var(--sk-radius-control);
+  border: none;
+  background: var(--sk-accent);
+  color: white;
+  font-weight: 600;
+  font-size: var(--sk-font-size-base);
+  cursor: pointer;
+  transition: background var(--sk-transition-fast);
+}
+
+.sk-button:hover:not(:disabled) {
+  background: var(--sk-accent-strong);
+}
+
+.sk-button:disabled {
+  background: var(--sk-border-strong);
+  cursor: not-allowed;
+}
+
+.sk-button--secondary {
+  background: transparent;
+  border: 1px solid var(--sk-border-strong);
+  color: var(--sk-text);
+}
+
+.sk-button--secondary:hover:not(:disabled) {
+  background: var(--sk-surface-muted);
+}
+
+.sk-empty-state {
+  color: var(--sk-text-faint);
+  font-style: italic;
+  padding: var(--sk-space-4) 0;
+}
+
+/* --- Мобильная адаптация --- */
+
+@media (max-width: 720px) {
+  /* Таблицы не перестраиваются в карточки на узких экранах — проще дать их горизонтально прокручиваться
+     внутри своей карточки, чем ломать макет или давать горизонтальный скролл всей странице. */
+  .sk-panel:has(.sk-table) {
+    overflow-x: auto;
+  }
+
+  .sk-table {
+    min-width: 480px;
+  }
+}

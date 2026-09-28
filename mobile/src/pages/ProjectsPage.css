@@ -1,0 +1,53 @@
+.sk-project-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-3);
+}
+
+.sk-project-item {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sk-project-item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--sk-space-2);
+}
+
+.sk-project-item__header h2 {
+  margin: 0;
+  font-size: var(--sk-font-size-lg);
+}
+
+.sk-project-status {
+  flex: none;
+  padding: 2px var(--sk-space-2);
+  border-radius: 999px;
+  font-size: var(--sk-font-size-sm);
+  white-space: nowrap;
+  background: var(--sk-surface-muted);
+  color: var(--sk-text-muted);
+}
+
+.sk-project-status--construction {
+  background: var(--sk-accent-bg);
+  color: var(--sk-accent-strong);
+}
+
+.sk-project-status--preparation {
+  background: var(--sk-status-warning-bg);
+  color: var(--sk-status-warning);
+}
+
+.sk-project-status--paused {
+  background: var(--sk-status-unknown-bg);
+  color: var(--sk-status-unknown);
+}
+
+.sk-project-status--completed {
+  background: var(--sk-status-ok-bg);
+  color: var(--sk-status-ok);
+}

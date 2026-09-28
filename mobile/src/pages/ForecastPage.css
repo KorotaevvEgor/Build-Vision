@@ -1,0 +1,117 @@
+.sk-forecast-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-4);
+}
+
+.sk-forecast-page > h1 {
+  margin-bottom: 0;
+}
+
+.sk-f-header__note {
+  margin: 0;
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-faint);
+}
+
+.sk-f-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-left: 4px solid var(--sk-status-unknown);
+}
+
+.sk-f-verdict--behind {
+  border-left-color: var(--sk-status-danger);
+}
+.sk-f-verdict--on_track {
+  border-left-color: var(--sk-status-ok);
+}
+.sk-f-verdict--ahead {
+  border-left-color: var(--sk-accent-strong);
+}
+
+.sk-f-verdict strong {
+  font-size: var(--sk-font-size-lg);
+}
+
+.sk-f-verdict__label {
+  font-size: 11px;
+  color: var(--sk-text-faint);
+}
+
+.sk-f-verdict__shift {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+}
+
+.sk-f-verdict__dates {
+  display: flex;
+  gap: var(--sk-space-5);
+  margin-top: var(--sk-space-2);
+  flex-wrap: wrap;
+}
+
+.sk-f-verdict__dates > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sk-f-verdict__value-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+}
+
+.sk-f-verdict__why-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--sk-accent-bg);
+  color: var(--sk-accent-strong);
+  border: 1px solid var(--sk-accent);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.sk-f-verdict__value--ok {
+  color: var(--sk-status-ok);
+}
+
+.sk-f-verdict__value--bad {
+  color: var(--sk-status-danger);
+}
+
+.sk-f-stage-panel__name {
+  font-weight: 600;
+  margin-bottom: var(--sk-space-3);
+}
+
+.sk-f-panel-link {
+  display: inline-block;
+  margin-top: var(--sk-space-3);
+  color: var(--sk-accent-strong);
+  text-decoration: none;
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+}
+
+.sk-f-alert-panel ul {
+  margin: var(--sk-space-2) 0 0;
+  padding-left: var(--sk-space-5);
+  font-size: var(--sk-font-size-sm);
+  line-height: 1.6;
+}
+
+.sk-f-alert-panel--danger {
+  border-left: 3px solid var(--sk-status-danger);
+}
+
+.sk-f-alert-panel--warning {
+  border-left: 3px solid var(--sk-status-warning);
+}

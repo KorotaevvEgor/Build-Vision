@@ -1,0 +1,416 @@
+/* --- Заголовок + действия (PDF) --- */
+
+.sk-a-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sk-space-4);
+  flex-wrap: wrap;
+}
+
+.sk-a-header h1 {
+  margin: 0;
+}
+
+.sk-a-header__note {
+  margin: 4px 0 0;
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-faint);
+}
+
+.sk-a-pdf-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* --- KPI-карточки --- */
+
+.sk-a-stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--sk-space-3);
+  margin-top: var(--sk-space-4);
+}
+
+.sk-a-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  padding: var(--sk-space-3);
+}
+
+.sk-a-stat__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--sk-radius-control);
+  background: var(--sk-accent-bg);
+  font-size: 17px;
+  flex-shrink: 0;
+}
+
+.sk-a-stat__icon--ok {
+  background: var(--sk-status-ok-bg);
+}
+.sk-a-stat__icon--warning {
+  background: var(--sk-status-warning-bg);
+}
+.sk-a-stat__icon--danger {
+  background: var(--sk-status-danger-bg);
+}
+
+.sk-a-stat__value {
+  font-size: var(--sk-font-size-lg);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.sk-a-stat__label {
+  font-size: 12px;
+  color: var(--sk-text-muted);
+}
+
+.sk-a-stat__hint {
+  font-size: 11px;
+  color: var(--sk-text-faint);
+  margin-top: 1px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+.sk-a-stat__hint--ok {
+  color: var(--sk-status-ok);
+}
+.sk-a-stat__hint--warning {
+  color: var(--sk-status-warning);
+}
+.sk-a-stat__hint--danger {
+  color: var(--sk-status-danger);
+}
+
+@media (max-width: 1300px) {
+  .sk-a-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .sk-a-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* --- Ряды из трёх карточек --- */
+
+.sk-a-row3 {
+  display: grid;
+  grid-template-columns: 1.6fr 1.2fr 1.2fr;
+  gap: var(--sk-space-4);
+  margin-top: var(--sk-space-4);
+  align-items: stretch;
+}
+
+.sk-a-row3 > .sk-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sk-a-row3 h2 {
+  margin: 0 0 var(--sk-space-3);
+  font-size: var(--sk-font-size-lg);
+}
+
+@media (max-width: 1300px) {
+  .sk-a-row3 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 800px) {
+  .sk-a-row3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sk-a-panel-link {
+  display: inline-block;
+  margin-top: auto;
+  padding-top: var(--sk-space-3);
+  color: var(--sk-accent-strong);
+  text-decoration: none;
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+}
+
+.sk-a-panel-link:hover {
+  text-decoration: underline;
+}
+
+/* --- Список этапов графика с прогресс-баром --- */
+
+.sk-a-stage-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-3);
+  overflow-y: auto;
+}
+
+.sk-a-stage-row__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sk-space-2);
+  margin-bottom: 4px;
+}
+
+.sk-a-stage-row__name {
+  font-size: var(--sk-font-size-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-a-stage-row__percent {
+  font-size: var(--sk-font-size-sm);
+  font-weight: 700;
+  color: var(--sk-text-muted);
+  flex-shrink: 0;
+}
+
+/* --- Факторы риска --- */
+
+.sk-a-risk-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-3);
+  overflow-y: auto;
+}
+
+.sk-a-risk-item {
+  border-left: 3px solid var(--sk-status-unknown);
+  background: var(--sk-surface-muted);
+  border-radius: 0 var(--sk-radius-control) var(--sk-radius-control) 0;
+  padding: var(--sk-space-2) var(--sk-space-3);
+}
+
+.sk-a-risk-item--danger {
+  border-left-color: var(--sk-status-danger);
+}
+.sk-a-risk-item--warning {
+  border-left-color: var(--sk-status-warning);
+}
+.sk-a-risk-item--ok {
+  border-left-color: var(--sk-status-ok);
+}
+
+.sk-a-risk-item__top {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--sk-text-muted);
+}
+
+.sk-a-risk-item--danger .sk-a-risk-item__top {
+  color: var(--sk-status-danger);
+}
+.sk-a-risk-item--warning .sk-a-risk-item__top {
+  color: var(--sk-status-warning);
+}
+.sk-a-risk-item--ok .sk-a-risk-item__top {
+  color: var(--sk-status-ok);
+}
+
+.sk-a-risk-item__message {
+  margin: 2px 0 0;
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+}
+
+/* --- Панель прогноза этапа --- */
+
+.sk-a-forecast__stage {
+  font-weight: 600;
+  margin-bottom: var(--sk-space-2);
+}
+
+.sk-a-forecast__dates {
+  display: flex;
+  gap: var(--sk-space-5);
+  margin-bottom: var(--sk-space-3);
+}
+
+.sk-a-forecast__dates > div > span {
+  display: block;
+  font-size: 11px;
+}
+
+.sk-a-forecast__delay {
+  display: inline-block;
+  padding: var(--sk-space-1) var(--sk-space-3);
+  border-radius: 999px;
+  font-size: var(--sk-font-size-sm);
+  font-weight: 700;
+  margin-bottom: var(--sk-space-2);
+}
+
+.sk-a-forecast__delay--ok {
+  background: var(--sk-status-ok-bg);
+  color: var(--sk-status-ok);
+}
+
+.sk-a-forecast__delay--bad {
+  background: var(--sk-status-danger-bg);
+  color: var(--sk-status-danger);
+}
+
+/* --- Таблица зон и лог событий --- */
+
+.sk-a-zones-panel .sk-table,
+.sk-a-events-panel .sk-table {
+  margin-top: var(--sk-space-2);
+}
+
+.sk-a-events-panel {
+  margin-top: var(--sk-space-4);
+}
+
+.sk-a-events__time {
+  white-space: nowrap;
+  color: var(--sk-text-faint);
+  font-size: 12px;
+}
+
+.sk-a-event-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: var(--sk-space-2);
+}
+
+.sk-a-event-dot--ok {
+  background: var(--sk-status-ok);
+}
+.sk-a-event-dot--warning {
+  background: var(--sk-status-warning);
+}
+.sk-a-event-dot--danger {
+  background: var(--sk-status-danger);
+}
+.sk-a-event-dot--info {
+  background: var(--sk-accent);
+}
+
+/* --- Столбчатый график (переиспользуется для отклонений/техники) --- */
+
+.sk-bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sk-space-3);
+  height: 180px;
+  margin-top: var(--sk-space-4);
+  overflow-x: auto;
+}
+
+.sk-bar-chart__col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 48px;
+  height: 100%;
+}
+
+.sk-bar-chart__track {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  width: 28px;
+  background: var(--sk-surface-muted);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.sk-bar-chart__bar {
+  width: 100%;
+  background: var(--sk-accent);
+  border-radius: 4px 4px 0 0;
+  min-height: 2px;
+  transition: height var(--sk-transition-base);
+}
+
+.sk-bar-chart__label {
+  font-size: 11px;
+  color: var(--sk-text-faint);
+  margin-top: var(--sk-space-2);
+  white-space: nowrap;
+}
+
+.sk-bar-chart__value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sk-text-muted);
+}
+
+/*
+  --- Экспорт в PDF через браузерный диалог печати (window.print → «Сохранить как PDF») —
+  без новых npm-зависимостей и бекенд-эндпоинта. Прячем сайдбар/топбар и управляющие
+  элементы, раскладываем карточки в одну колонку и печатаем на светлом фоне.
+*/
+@media print {
+  .sk-sidebar,
+  .sk-topbar,
+  .sk-a-pdf-btn {
+    display: none !important;
+  }
+
+  .sk-shell__content {
+    padding: 0 !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  .sk-analytics-page {
+    height: auto !important;
+    color: #10151f;
+  }
+
+  .sk-analytics-page h1,
+  .sk-analytics-page h2 {
+    color: #10151f;
+  }
+
+  .sk-analytics-page .sk-panel {
+    background: #fff !important;
+    border-color: #d7dce6 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  .sk-a-stats {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  .sk-a-row3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .sk-a-stage-list,
+  .sk-a-risk-list {
+    overflow: visible !important;
+  }
+}

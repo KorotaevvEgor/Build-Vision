@@ -1,0 +1,245 @@
+.sk-panel {
+  background: var(--sk-surface);
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius-panel);
+  padding: var(--sk-space-4);
+  box-shadow: var(--sk-shadow-sm);
+}
+
+.sk-panel--error {
+  border-color: var(--sk-status-danger);
+  color: var(--sk-status-danger);
+  background: var(--sk-status-danger-bg);
+}
+
+.sk-demo-note {
+  color: var(--sk-text-muted);
+  font-size: var(--sk-font-size-sm);
+  background: var(--sk-surface-muted);
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius-control);
+  padding: var(--sk-space-3) var(--sk-space-4);
+  margin: var(--sk-space-3) 0 0;
+}
+
+.sk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-table__muted {
+  color: var(--sk-text-muted);
+}
+
+.sk-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-1);
+  margin-bottom: var(--sk-space-4);
+}
+
+.sk-field label {
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+  color: var(--sk-text-muted);
+}
+
+.sk-field__hint {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-faint);
+  line-height: 1.5;
+}
+
+.sk-field input[type="date"],
+.sk-field input[type="text"],
+.sk-field input[type="password"],
+.sk-field input:not([type]),
+.sk-field select {
+  padding: var(--sk-space-2) var(--sk-space-3);
+  border: 1px solid var(--sk-border-strong);
+  border-radius: var(--sk-radius-control);
+  font-size: var(--sk-font-size-base);
+  background: var(--sk-surface);
+  color: var(--sk-text);
+  width: 100%;
+}
+
+.sk-button {
+  padding: var(--sk-space-3) var(--sk-space-5);
+  border-radius: var(--sk-radius-control);
+  border: none;
+  background: var(--sk-accent);
+  color: white;
+  font-weight: 600;
+  font-size: var(--sk-font-size-base);
+  cursor: pointer;
+  transition: background var(--sk-transition-fast);
+}
+
+.sk-button:hover:not(:disabled) {
+  background: var(--sk-accent-strong);
+}
+
+.sk-button:disabled {
+  background: var(--sk-border-strong);
+  cursor: not-allowed;
+}
+
+.sk-button--secondary {
+  background: transparent;
+  border: 1px solid var(--sk-border-strong);
+  color: var(--sk-text);
+}
+
+.sk-button--block {
+  width: 100%;
+  display: block;
+  text-align: center;
+}
+
+.sk-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+  margin-bottom: var(--sk-space-4);
+}
+
+.sk-empty-state {
+  color: var(--sk-text-faint);
+  font-style: italic;
+  padding: var(--sk-space-4) 0;
+}
+
+/* --- Общие примитивы для Календарного плана/Прогноза/Аналитики/Камер --- */
+
+.sk-progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--sk-surface-muted);
+  overflow: hidden;
+}
+
+.sk-progress-bar__fill {
+  height: 100%;
+  background: var(--sk-accent);
+  border-radius: 999px;
+  transition: width var(--sk-transition-base);
+}
+
+.sk-progress-flex {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-4);
+  flex-wrap: wrap;
+}
+
+.sk-progress-ring {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.sk-progress-ring::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: var(--sk-surface);
+}
+
+.sk-progress-ring span {
+  position: relative;
+  font-weight: 700;
+  font-size: var(--sk-font-size-base);
+}
+
+.sk-plan-fact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-1);
+  flex: 1;
+  min-width: 140px;
+}
+
+.sk-plan-fact small {
+  display: block;
+  font-size: 11px;
+  color: var(--sk-text-faint);
+}
+
+.sk-plan-fact strong {
+  font-size: var(--sk-font-size-base);
+  font-weight: 600;
+}
+
+.sk-risk-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sk-risk-badge--danger {
+  background: var(--sk-status-danger-bg);
+  color: var(--sk-status-danger);
+}
+
+.sk-risk-badge--warning {
+  background: var(--sk-status-warning-bg);
+  color: var(--sk-status-warning);
+}
+
+.sk-risk-badge--ok {
+  background: var(--sk-status-ok-bg);
+  color: var(--sk-status-ok);
+}
+
+.sk-quantity-mismatch {
+  color: var(--sk-status-danger);
+  font-weight: 600;
+}
+
+.sk-chip {
+  padding: var(--sk-space-1) var(--sk-space-3);
+  border-radius: 999px;
+  border: 1px solid var(--sk-border-strong);
+  background: transparent;
+  color: var(--sk-text-muted);
+  font-family: inherit;
+  font-size: var(--sk-font-size-sm);
+  cursor: pointer;
+}
+
+.sk-chip--active {
+  background: var(--sk-accent-bg);
+  border-color: var(--sk-accent);
+  color: var(--sk-accent-strong);
+  font-weight: 600;
+}
+
+.sk-settings-danger__trigger,
+.sk-settings-danger__confirm-btn {
+  background: var(--sk-status-danger);
+}
+
+.sk-settings-danger__trigger:hover:not(:disabled),
+.sk-settings-danger__confirm-btn:hover:not(:disabled) {
+  filter: brightness(0.9);
+}
+
+.sk-class-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: var(--sk-space-2);
+}

@@ -1,0 +1,97 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stroykontrol}
+      POSTGRES_USER: ${POSTGRES_USER:-stroykontrol}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stroykontrol}
+      # md5 вместо scram-sha-256: баг в libpq из psycopg[binary] на Windows некорректно
+      # декодирует ответ сервера при SCRAM через порт-форвардинг Docker Desktop.
+      POSTGRES_HOST_AUTH_METHOD: md5
+    ports:
+      # Только локальный доступ (например, для psql с самого VPS) — не наружу.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - stroykontrol_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stroykontrol}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI: детекция, анализ, весь API для фронтенда.
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: stroykontrol:local
+    ports:
+      # Публично не торчим — внешний трафик идёт через nginx (80/443) на хосте.
+      - "127.0.0.1:8000:8000"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-stroykontrol}:${POSTGRES_PASSWORD:-stroykontrol}@db:5432/${POSTGRES_DB:-stroykontrol}
+      DJANGO_SETTINGS_MODULE: admin_panel.settings
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: "false"
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-*}
+      # SameSite=None+Secure в проде нужны, чтобы мобильное приложение (другой origin,
+      # см. mobile/) продолжало получать cookie сессии на кросс-сайт fetch-запросах (см. auth.py).
+      SK_SESSION_COOKIE_SECURE: ${SK_SESSION_COOKIE_SECURE:-false}
+      # Общий cookie для основного домена и его поддомена admin — Администратор входит один раз.
+      SK_SESSION_COOKIE_DOMAIN: ${SK_SESSION_COOKIE_DOMAIN:-}
+    volumes:
+      # Загруженные снимки переживают пересборку/перезапуск контейнера — том
+      # смонтирован снаружи (см. план, раздел «Размещение на арендованной VPS»).
+      - ./data/uploads:/app/data/uploads
+      # Артефакты классификатора-корректора (модуль AI Learning) пишутся в
+      # /app/models во время работы контейнера — без этого монтирования они бы терялись
+      # при каждом перезапуске/пересборке образа.
+      - ./models:/app/models
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Django admin: редактирование справочников, правил, графика и просмотр
+  # истории анализа (Observation/Detection/StageEvaluationRecord). Отдельный
+  # лёгкий образ без ML-зависимостей — админке они не нужны.
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.admin
+    image: stroykontrol-admin:local
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py seed_demo_data --users-only &&
+             python manage.py collectstatic --noinput &&
+             python manage.py runserver 0.0.0.0:8001"
+    ports:
+      - "127.0.0.1:8001:8001"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-stroykontrol}:${POSTGRES_PASSWORD:-stroykontrol}@db:5432/${POSTGRES_DB:-stroykontrol}
+      DJANGO_SETTINGS_MODULE: admin_panel.settings
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: "false"
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-*}
+      DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME:-admin}
+      DJANGO_SUPERUSER_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD:-}
+      DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL:-admin@example.com}
+      SK_PARTICIPANT_PASSWORD: ${SK_PARTICIPANT_PASSWORD:-}
+      SK_SESSION_COOKIE_SECURE: ${SK_SESSION_COOKIE_SECURE:-false}
+      SK_SESSION_COOKIE_DOMAIN: ${SK_SESSION_COOKIE_DOMAIN:-}
+    volumes:
+      - ./data/admin_static:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  stroykontrol_pgdata:

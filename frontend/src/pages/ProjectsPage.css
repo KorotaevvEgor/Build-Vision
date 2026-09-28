@@ -1,0 +1,384 @@
+/*
+  Без жёсткого max-width: страница занимает всю ширину области контента (.sk-shell__content),
+  иначе на широких экранах блок останавливался уже 1200px и прижимался к левому краю
+  (без margin: auto в центр), из-за чего кнопка в шапке оказывалась не у правого края
+  экрана, а карточки не доходили до конца страницы.
+*/
+.sk-projects-page {
+  width: 100%;
+}
+
+.sk-projects-page__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--sk-space-4);
+  flex-wrap: wrap;
+}
+
+.sk-projects-page__header h1 {
+  margin: 0 0 4px;
+}
+
+.sk-projects-page__notice {
+  margin-top: var(--sk-space-4);
+}
+
+.sk-projects-page__empty {
+  margin-top: var(--sk-space-5);
+}
+
+/* ---------- Тулбар: поиск + счётчик ---------- */
+
+.sk-projects-page__toolbar {
+  margin-top: var(--sk-space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-4);
+  flex-wrap: wrap;
+}
+
+.sk-projects-search {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  width: 100%;
+  max-width: 360px;
+  padding: 10px var(--sk-space-3);
+  background: var(--sk-surface);
+  border: 1px solid var(--sk-border-strong);
+  border-radius: var(--sk-radius-control);
+  color: var(--sk-text-faint);
+  transition: border-color var(--sk-transition-fast), box-shadow var(--sk-transition-fast);
+}
+
+.sk-projects-search:focus-within {
+  border-color: var(--sk-accent);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
+  color: var(--sk-accent-strong);
+}
+
+.sk-projects-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--sk-text);
+  font-size: var(--sk-font-size-base);
+  font-family: inherit;
+}
+
+.sk-projects-search input::placeholder {
+  color: var(--sk-text-faint);
+}
+
+.sk-projects-search__clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: var(--sk-surface-muted);
+  color: var(--sk-text-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sk-projects-search__clear:hover {
+  background: var(--sk-border-strong);
+  color: var(--sk-text);
+}
+
+.sk-projects-page__count {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-faint);
+  white-space: nowrap;
+}
+
+/* ---------- Сетка карточек ---------- */
+
+.sk-projects-grid {
+  margin-top: var(--sk-space-5);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--sk-space-5);
+}
+
+/*
+  Карточки проектов — тоже «liquid glass», как сайдбар и топбар (см. AppShell.css):
+  полупрозрачный фон с размытием поверх общего фона body вместо сплошной панели
+  из .sk-panel. Сама карточка — «hero»-плитка: фото/мини-карта сверху, тёмный градиент-скрим
+  поверх и статус-чип в углу — вместо сухой плитки с картой и текстом просто сверху.
+*/
+.sk-project-card {
+  position: relative;
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  background: var(--sk-glass-card);
+  border: 1px solid var(--sk-glass-border);
+  border-top: 3px solid var(--sk-border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  transition:
+    transform var(--sk-transition-base),
+    border-color var(--sk-transition-base),
+    box-shadow var(--sk-transition-base),
+    background var(--sk-transition-base);
+}
+
+/* --- Медиа-блок: фото камеры или мини-карта, градиент-скрим, статус-чип в углу --- */
+
+.sk-project-card__media {
+  position: relative;
+  height: 160px;
+  overflow: hidden;
+  background: var(--sk-surface-muted);
+}
+
+.sk-project-card__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 600ms ease;
+}
+
+.sk-project-card:hover .sk-project-card__photo {
+  transform: scale(1.05);
+}
+
+.sk-project-card__media .sk-project-minimap {
+  height: 100%;
+  border-radius: 0;
+}
+
+.sk-project-card__scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(11, 15, 26, 0) 35%, rgba(11, 15, 26, 0.86) 100%);
+  pointer-events: none;
+}
+
+.sk-project-card__media .sk-project-status {
+  position: absolute;
+  top: var(--sk-space-3);
+  right: var(--sk-space-3);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.sk-project-card:hover {
+  transform: translateY(-4px);
+  background: var(--sk-glass-card-hover);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.36);
+}
+
+.sk-project-card:hover .sk-project-card__cta svg {
+  transform: translateX(3px);
+}
+
+.sk-project-card--construction {
+  border-top-color: var(--sk-accent);
+}
+
+.sk-project-card--preparation {
+  border-top-color: var(--sk-status-warning);
+}
+
+.sk-project-card--paused {
+  border-top-color: var(--sk-status-unknown);
+}
+
+.sk-project-card--completed {
+  border-top-color: var(--sk-status-ok);
+}
+
+.sk-project-card__body {
+  padding: var(--sk-space-4);
+}
+
+.sk-project-card__body h2 {
+  margin: 0;
+  font-size: var(--sk-font-size-lg);
+}
+
+.sk-project-card__address {
+  color: var(--sk-text-muted);
+  margin: var(--sk-space-1) 0 var(--sk-space-3);
+}
+
+/* --- Текущий этап с полосой прогресса --- */
+
+.sk-project-card__stage {
+  margin-bottom: var(--sk-space-3);
+}
+
+.sk-project-card__stage-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sk-space-2);
+  margin-bottom: 6px;
+}
+
+.sk-project-card__stage-name {
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-project-card__stage-percent {
+  font-size: var(--sk-font-size-sm);
+  font-weight: 700;
+  color: var(--sk-accent-strong);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Своё имя класса, а не общий .sk-progress-bar из DashboardPage.css: карточка проекта должна
+   выглядеть корректно даже если страница Дашборда ещё ни разу не открывалась и её CSS не загружен. */
+.sk-project-card__progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--sk-surface-muted);
+  overflow: hidden;
+}
+
+.sk-project-card__progress .sk-progress-bar__fill {
+  height: 100%;
+  background: var(--sk-accent);
+  border-radius: 999px;
+}
+
+/* --- Строка коротких чипов: снимки, открытые отклонения --- */
+
+.sk-project-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sk-space-2);
+}
+
+.sk-project-card__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px var(--sk-space-2);
+  border-radius: 999px;
+  background: var(--sk-surface-muted);
+  color: var(--sk-text-muted);
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sk-project-card__stat--danger {
+  background: var(--sk-status-danger-bg);
+  color: var(--sk-status-danger);
+}
+
+.sk-project-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--sk-space-3);
+  color: var(--sk-accent-strong);
+  font-weight: 600;
+}
+
+.sk-project-card__cta svg {
+  transition: transform var(--sk-transition-fast);
+}
+
+.sk-project-status {
+  flex: none;
+  padding: 2px var(--sk-space-2);
+  border-radius: 999px;
+  font-size: var(--sk-font-size-sm);
+  white-space: nowrap;
+  background: var(--sk-surface-muted);
+  color: var(--sk-text-muted);
+}
+
+.sk-project-status--construction {
+  background: var(--sk-accent-bg);
+  color: var(--sk-accent-strong);
+}
+
+.sk-project-status--preparation {
+  background: var(--sk-status-warning-bg);
+  color: var(--sk-status-warning);
+}
+
+.sk-project-status--paused {
+  background: var(--sk-status-unknown-bg);
+  color: var(--sk-status-unknown);
+}
+
+.sk-project-status--completed {
+  background: var(--sk-status-ok-bg);
+  color: var(--sk-status-ok);
+}
+
+/* ---------- Скелетон загрузки ---------- */
+
+.sk-project-card--skeleton {
+  border-top-color: var(--sk-border);
+  cursor: default;
+}
+
+.sk-project-card--skeleton:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.sk-project-card__skeleton-media {
+  height: 160px;
+  background: linear-gradient(
+    100deg,
+    var(--sk-surface-muted) 30%,
+    var(--sk-surface-elevated) 50%,
+    var(--sk-surface-muted) 70%
+  );
+  background-size: 200% 100%;
+  animation: sk-projects-shimmer 1.5s ease-in-out infinite;
+}
+
+.sk-project-card__skeleton-line {
+  height: 12px;
+  margin: var(--sk-space-2) 0;
+  border-radius: 6px;
+  background: linear-gradient(
+    100deg,
+    var(--sk-surface-muted) 30%,
+    var(--sk-surface-elevated) 50%,
+    var(--sk-surface-muted) 70%
+  );
+  background-size: 200% 100%;
+  animation: sk-projects-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes sk-projects-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-project-card__skeleton-media,
+  .sk-project-card__skeleton-line {
+    animation: none;
+  }
+}

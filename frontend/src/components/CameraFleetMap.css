@@ -1,0 +1,23 @@
+.sk-camera-fleet-map {
+  position: relative;
+  border-radius: var(--sk-radius-control);
+  overflow: hidden;
+  background: var(--sk-surface-muted);
+}
+
+.sk-camera-fleet-marker span {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--sk-accent);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.sk-camera-fleet-marker--active span {
+  width: 20px;
+  height: 20px;
+  background: var(--sk-status-warning);
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.35);
+}

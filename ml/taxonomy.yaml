@@ -1,0 +1,101 @@
+# Единая таксономия классов строительной техники для дообучения детектора.
+#
+# Ключи совпадают с VocabularyClass.key в базе данных — это позволяет
+# подменить детектор, не трогая правила этапов, историю наблюдений и коррекции
+# инженера, которые ссылаются на классы по ключу.
+#
+# Перечень шире восьми классов из ТЗ, и это осознанно. В выданном заказчиком
+# датасете доминируют башенные краны и буровые (сваебойные) установки, которых
+# в перечне ТЗ нет: без них система слепа на свайных и монолитных этапах —
+# самых частых на реальных снимках. Расширение перечня организаторы разрешили
+# явно, а ограничения описаны в документации.
+
+version: 1
+
+classes:
+  # --- Классы из перечня ТЗ ---
+  - key: excavator
+    label_ru: Экскаватор
+    in_tz: true
+  - key: dump_truck
+    label_ru: Самосвал
+    in_tz: true
+  - key: bulldozer
+    label_ru: Бульдозер
+    in_tz: true
+  - key: truck
+    label_ru: Грузовик
+    in_tz: true
+  - key: concrete_mixer
+    label_ru: Автобетоносмеситель
+    in_tz: true
+  - key: mobile_crane
+    label_ru: Автокран
+    in_tz: true
+  - key: road_roller
+    label_ru: Каток
+    in_tz: true
+  - key: crane_manipulator
+    label_ru: Кран-манипулятор
+    in_tz: true
+
+  # --- Классы, добавленные по составу реальных снимков ---
+  - key: tower_crane
+    label_ru: Башенный кран
+    in_tz: false
+    rationale: >-
+      Присутствует почти на каждом снимке монолитных этапов. Ранее сваливался
+      в один класс с автокраном, что делало невозможной проверку правил этапа.
+  - key: drill_rig
+    label_ru: Буровая установка
+    in_tz: false
+    rationale: >-
+      Свайные работы и ограждающие конструкции — самая частая стадия в выданной
+      выборке. Без класса техника ошибочно относилась к экскаватору или крану.
+  - key: wheel_loader
+    label_ru: Погрузчик
+    in_tz: false
+    rationale: Массовая техника земляных работ и погрузки строительного мусора.
+  - key: concrete_pump
+    label_ru: Автобетононасос
+    in_tz: false
+    rationale: Отличается от автобетоносмесителя ролью в правиле этапа бетонирования.
+
+# Сопоставление исходных наборов данных с нашей таксономией.
+# Имена классов источника приводятся в нижнем регистре без пробелов по краям.
+# Классы источника, которых нет в таблице, отбрасываются при конвертации —
+# молча подставлять «похожий» класс нельзя, это порождает скрытые ошибки разметки.
+sources:
+  gh_excavator:
+    description: Construction-Machines-Images-Dataset, 223 снимка экскаваторов, формат YOLO
+    layout: flat_yolo
+    path: gh-excavator/Construction-Machines-Images-Dataset-main/excavator-dataset-223img-yolo
+    class_map:
+      "0": excavator
+
+  roboflow_construction_machinery:
+    description: Roboflow Universe construction-machinery-tbosw (требуется API-ключ)
+    layout: yolo_splits
+    path: roboflow-construction-machinery
+    class_map:
+      excavator: excavator
+      dump truck: dump_truck
+      dumptruck: dump_truck
+      truck: truck
+      bulldozer: bulldozer
+      dozer: bulldozer
+      wheel loader: wheel_loader
+      loader: wheel_loader
+      backhoe loader: wheel_loader
+      roller: road_roller
+      compactor: road_roller
+      grader: bulldozer
+      tower crane: tower_crane
+      mobile crane: mobile_crane
+      crane: mobile_crane
+      concrete mixer truck: concrete_mixer
+      cement truck: concrete_mixer
+      concrete pump: concrete_pump
+      pump truck: concrete_pump
+      pile driver: drill_rig
+      drill rig: drill_rig

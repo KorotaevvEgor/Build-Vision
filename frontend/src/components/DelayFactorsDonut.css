@@ -1,0 +1,82 @@
+.sk-delay-donut {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-5);
+  flex-wrap: wrap;
+}
+
+.sk-delay-donut__chart {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  flex-shrink: 0;
+}
+
+.sk-delay-donut__chart svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.sk-delay-donut__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.sk-delay-donut__center strong {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--sk-text);
+}
+
+.sk-delay-donut__center span {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--sk-text-faint);
+  max-width: 90px;
+  line-height: 1.3;
+}
+
+.sk-delay-donut__legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+  flex: 1;
+  min-width: 180px;
+}
+
+.sk-delay-donut__legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-delay-donut__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sk-delay-donut__legend-label {
+  flex: 1;
+  color: var(--sk-text);
+  font-weight: 600;
+}
+
+.sk-delay-donut__legend-value {
+  color: var(--sk-text-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

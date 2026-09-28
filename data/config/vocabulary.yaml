@@ -1,0 +1,82 @@
+# Словарь открытой детекции для YOLO-World.
+#
+# YOLO-World сопоставляет рамки с текстовыми промптами через CLIP-энкодер,
+# обученный на английском языке, поэтому промпты задаются по-английски,
+# а в интерфейс выводится русское название класса.
+#
+# Один класс может иметь несколько промптов: модель ищет каждый из них
+# отдельно, а результат сводится к канонической строке `key`.
+# Словарь НЕ зависит от активного этапа графика — иначе система
+# перестанет замечать неожиданную технику.
+
+version: 1
+classes:
+  - key: dump_truck
+    label_ru: Самосвал
+    prompts:
+      - dump truck
+      - tipper truck
+      - articulated dump truck
+
+  - key: excavator
+    label_ru: Экскаватор
+    prompts:
+      - crawler excavator with digging bucket arm
+      - yellow hydraulic excavator digging soil
+      - excavator with articulated boom and bucket
+
+  - key: road_roller
+    label_ru: Каток
+    prompts:
+      - road roller
+      - compactor roller
+
+  - key: crane_manipulator
+    label_ru: Кран-манипулятор
+    prompts:
+      - flatbed truck with folding loader crane arm
+      - knuckle boom crane mounted on truck bed
+
+  - key: concrete_mixer
+    label_ru: Автобетоносмеситель
+    prompts:
+      - concrete mixer truck
+      - cement mixer truck
+
+  - key: bulldozer
+    label_ru: Бульдозер
+    prompts:
+      - bulldozer
+      - crawler dozer
+
+  - key: truck
+    label_ru: Грузовик
+    prompts:
+      - truck
+      - cargo truck
+      - flatbed truck
+
+  - key: mobile_crane
+    label_ru: Автокран
+    prompts:
+      - mobile crane
+      - crawler crane
+      - tower crane
+
+# Классы, которые модель может выдать, но которые не входят в таксономию ТЗ.
+# Нужны, чтобы отличать «ничего не найдено» от «найдена нерелевантная техника»
+# и не приписывать неизвестную машину одному из восьми классов.
+distractors:
+  - key: car
+    label_ru: Легковой автомобиль
+    prompts:
+      - car
+      - van
+  - key: bus
+    label_ru: Автобус
+    prompts:
+      - bus
+  - key: person
+    label_ru: Человек
+    prompts:
+      - person

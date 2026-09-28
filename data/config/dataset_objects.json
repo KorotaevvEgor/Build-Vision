@@ -1,0 +1,156 @@
+{
+  "note": "Разбиение выданных 100 снимков по объектам надзора. Получено вручную по контактным листам: автоматическая группировка по CLIP-эмбеддингам проверена и не сработала (похожесть между кадрами непрерывна, порога с осмысленными группами нет). Объекты опознаны по устойчивым признакам сцены: зданиям на заднем плане, технике, ограждению. Внутри объекта кадры с одной датой — это один обход с нескольких точек съёмки.",
+  "date_shift_note": "Выданные снимки относятся к 2023-2025 годам. Чтобы объекты были живыми на дату демонстрации, хронология сдвинута вперёд на указанное число дней, кратное примерно году, чтобы сезон на кадре соответствовал сдвинутой дате: снег остаётся зимой. Исходный штамп даты сохраняется в примечании к наблюдению и виден в интерфейсе.",
+  "coordinates_note": "В выданных материалах нет ни адресов, ни координат объектов. Координаты и границы участков условные, объекты помечены как демонстрационные.",
+  "objects": [
+    {
+      "id": "obj-business-quarter",
+      "name": "Площадка у делового квартала",
+      "address": "Адрес в выданных материалах не указан",
+      "latitude": 55.7423,
+      "longitude": 37.6156,
+      "date_shift_days": 1096,
+      "plan_shift_days": 0,
+      "comment": "Шесть обходов с апреля по октябрь: пустырь, шпунтовое ограждение, бурение, котлован. После сдвига последний обход приходится на середину сентября — объект под активным контролем.",
+      "files": [
+        "Screenshot_2.png", "Screenshot_3.png", "Screenshot_4.png", "Screenshot_5.png",
+        "Screenshot_6.png", "Screenshot_7.png", "Screenshot_8.png", "Screenshot_9.png",
+        "Screenshot_10.png", "Screenshot_11.png", "Screenshot_12.png", "Screenshot_13.png",
+        "Screenshot_14.png", "Screenshot_15.png", "Screenshot_16.png"
+      ]
+    },
+    {
+      "id": "obj-brick-yard",
+      "name": "Площадка у кирпичного корпуса",
+      "address": "Адрес в выданных материалах не указан",
+      "latitude": 55.7712,
+      "longitude": 37.5489,
+      "date_shift_days": 792,
+      "plan_shift_days": -28,
+      "comment": "Самая длинная серия набора: шесть обходов за полгода, от бурения свай в снегу до разработанного котлована. Плановые сроки поставлены с опережением факта на четыре недели — объект отстаёт.",
+      "files": [
+        "Screenshot_27.png", "Screenshot_28.png", "Screenshot_29.png", "Screenshot_30.png",
+        "Screenshot_31.png", "Screenshot_32.png", "Screenshot_33.png", "Screenshot_34.png",
+        "Screenshot_35.png", "Screenshot_36.png", "Screenshot_37.png", "Screenshot_38.png",
+        "Screenshot_39.png", "Screenshot_40.png", "Screenshot_41.png", "Screenshot_42.png",
+        "Screenshot_43.png", "Screenshot_44.png", "Screenshot_45.png", "Screenshot_46.png",
+        "Screenshot_47.png", "Screenshot_48.png"
+      ]
+    },
+    {
+      "id": "obj-autumn-site",
+      "name": "Площадка с осенним шпунтом",
+      "address": "Адрес в выданных материалах не указан",
+      "latitude": 55.6891,
+      "longitude": 37.7234,
+      "date_shift_days": 761,
+      "plan_shift_days": 14,
+      "comment": "Пять обходов с осени до февраля: шпунт, сваи, котлован, монолит ниже нуля. Плановые сроки поставлены с запасом — объект идёт с опережением.",
+      "files": [
+        "Screenshot_79.png", "Screenshot_80.png", "Screenshot_81.png", "Screenshot_82.png",
+        "Screenshot_83.png", "Screenshot_84.png", "Screenshot_85.png", "Screenshot_86.png",
+        "Screenshot_87.png", "Screenshot_88.png", "Screenshot_89.png", "Screenshot_90.png",
+        "Screenshot_91.png", "Screenshot_92.png", "Screenshot_93.png", "Screenshot_94.png"
+      ]
+    },
+    {
+      "id": "obj-residential",
+      "name": "Площадка в жилом квартале",
+      "address": "Адрес в выданных материалах не указан",
+      "latitude": 55.8104,
+      "longitude": 37.4967,
+      "date_shift_days": 365,
+      "plan_shift_days": -10,
+      "comment": "Пять обходов с сентября по февраль. Последний снимок давний — объект попадает в перечень тех, по которым контроль не подтверждён.",
+      "files": [
+        "Screenshot_62.png", "Screenshot_63.png", "Screenshot_64.png", "Screenshot_65.png",
+        "Screenshot_66.png", "Screenshot_67.png"
+      ]
+    },
+    {
+      "id": "obj-no-stamp",
+      "name": "Площадка без штампов даты",
+      "address": "Адрес в выданных материалах не указан",
+      "latitude": 55.7301,
+      "longitude": 37.4412,
+      "date_shift_days": 0,
+      "plan_shift_days": 0,
+      "comment": "Сезонная хроника без впечатанных дат: осень, зима, монолит, каркас. Даты снимков не подтверждены, поэтому объект намеренно остаётся без календарного сопоставления — это и есть честное «контроль по снимкам невозможен».",
+      "files": [
+        "Screenshot_49.png", "Screenshot_50.png", "Screenshot_51.png", "Screenshot_52.png",
+        "Screenshot_53.png", "Screenshot_54.png", "Screenshot_55.png", "Screenshot_56.png",
+        "Screenshot_57.png", "Screenshot_58.png", "Screenshot_59.png"
+      ]
+    },
+    {
+      "id": "obj-sheet-pile",
+      "name": "Площадка со шпунтовым котлованом",
+      "address": "Адрес в выданных материалах не указан",
+      "latitude": 55.6623,
+      "longitude": 37.5901,
+      "date_shift_days": 0,
+      "plan_shift_days": 0,
+      "comment": "Шпунтовый котлован с распорками и монолит. Штампов даты нет, календарное сопоставление недоступно.",
+      "files": [
+        "Screenshot_68.png", "Screenshot_69.png", "Screenshot_70.png", "Screenshot_71.png",
+        "Screenshot_72.png", "Screenshot_73.png", "Screenshot_74.png", "Screenshot_75.png",
+        "Screenshot_76.png", "Screenshot_77.png", "Screenshot_78.png", "Screenshot_95.png",
+        "Screenshot_96.png", "Screenshot_97.png", "Screenshot_98.png", "Screenshot_99.png",
+        "Screenshot_100.png"
+      ]
+    }
+  ],
+  "unassigned_note": "Кадры 1, 17-26, 60, 61 — одиночные визиты на разные площадки, в серии не складываются и не импортируются: объект из одного снимка ничего не показывает.",
+  "stage_rules_note": "Правила техники по стадиям. Там, где главная машина этапа отсутствует в таксономии детектора (буровая и сваебойная установка), обязательной техники намеренно нет: требовать то, что детектор физически не умеет находить, значит штамповать ложные отклонения.",
+  "stage_rules": {
+    "site_preparation": {
+      "work_code": "10.3.",
+      "work_name": "Подготовка территории и снос",
+      "required": {},
+      "allowed": ["excavator", "dump_truck", "bulldozer", "truck"],
+      "alternatives_note": "Состав техники на подготовке территории сильно зависит от объёма сноса, поэтому обязательной техники не задано — проверяется только отсутствие посторонних машин."
+    },
+    "excavation": {
+      "work_code": "12.3.1.",
+      "work_name": "Устройство котлована и земляные работы",
+      "required": { "excavator": 1 },
+      "allowed": ["dump_truck", "bulldozer", "truck", "mobile_crane"],
+      "alternatives_note": "Разработка грунта экскаватором с вывозом самосвалами — один из возможных вариантов. Число самосвалов в требования не вынесено: точность их распознавания измерена как низкая."
+    },
+    "piling": {
+      "work_code": "12.3.2.",
+      "work_name": "Свайные работы и ограждающие конструкции",
+      "required": {},
+      "allowed": ["excavator", "mobile_crane", "crane_manipulator", "truck", "dump_truck", "concrete_mixer"],
+      "alternatives_note": "Главная машина этапа — буровая или сваебойная установка — в таксономии детектора отсутствует, поэтому наличие требуемой техники автоматически не проверяется. Это зафиксированное ограничение, а не пропуск."
+    },
+    "substructure": {
+      "work_code": "12.3.9.",
+      "work_name": "Монолитные работы ниже отметки 0",
+      "required": { "mobile_crane": 1 },
+      "allowed": ["concrete_mixer", "excavator", "truck", "crane_manipulator"],
+      "alternatives_note": "Подача бетона автобетононасосом вместо крана допустима; автобетононасос в таксономии отсутствует и автоматически не проверяется."
+    },
+    "superstructure": {
+      "work_code": "12.4.28.",
+      "work_name": "Монолитные работы выше отметки 0",
+      "required": { "mobile_crane": 1 },
+      "allowed": ["concrete_mixer", "truck", "crane_manipulator"],
+      "alternatives_note": "Башенный кран в таксономии детектора отсутствует и может быть распознан как автокран — расхождение требует ручной проверки."
+    },
+    "facade_roof": {
+      "work_code": "12.4.11.",
+      "work_name": "Фасад и кровля",
+      "required": {},
+      "allowed": ["mobile_crane", "truck", "crane_manipulator"],
+      "alternatives_note": "Фасадные работы ведутся с подъёмников и лесов, которых нет в таксономии; автоматическая проверка состава техники неприменима."
+    },
+    "landscaping": {
+      "work_code": "12.7.1.",
+      "work_name": "Благоустройство и дорожные работы",
+      "required": { "road_roller": 1 },
+      "allowed": ["dump_truck", "truck", "excavator", "bulldozer"],
+      "alternatives_note": "Асфальтоукладчик в таксономию не входит — проверяется только наличие катка и отсутствие посторонней техники."
+    }
+  }
+}

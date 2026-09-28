@@ -1,0 +1,282 @@
+/*
+  Страница — flex-колонка с единым отступом между всеми блоками (вердикт, два столбца,
+  погода, алерты) — без этого карточки без своего margin-top (напр. WeatherRiskPanel)
+  касались вплотную без зазора.
+*/
+.sk-forecast-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-4);
+}
+
+/* --- Заголовок + PDF --- */
+
+.sk-f-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sk-space-4);
+  flex-wrap: wrap;
+}
+
+.sk-f-header h1 {
+  margin: 0;
+}
+
+.sk-f-header__note {
+  margin: 4px 0 0;
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-faint);
+  max-width: 640px;
+}
+
+.sk-f-pdf-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* --- Главный вердикт --- */
+
+.sk-f-verdict {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sk-space-5);
+  flex-wrap: wrap;
+  padding: var(--sk-space-4) var(--sk-space-5);
+  border-radius: var(--sk-radius-panel);
+  background: var(--sk-surface);
+  border: 1px solid var(--sk-border);
+  border-left: 5px solid var(--sk-status-unknown);
+  box-shadow: var(--sk-shadow-md);
+}
+
+.sk-f-verdict--behind {
+  border-left-color: var(--sk-status-danger);
+}
+
+.sk-f-verdict--on_track {
+  border-left-color: var(--sk-status-ok);
+}
+
+.sk-f-verdict--ahead {
+  border-left-color: var(--sk-accent-strong);
+}
+
+.sk-f-verdict__status {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sk-f-verdict__status strong {
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.sk-f-verdict__label {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-faint);
+}
+
+.sk-f-verdict__shift {
+  margin-top: 2px;
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-f-verdict__dates {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-4);
+  flex-wrap: wrap;
+}
+
+.sk-f-verdict__dates > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sk-f-verdict__dates strong {
+  font-size: var(--sk-font-size-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-f-verdict__value-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+}
+
+.sk-f-verdict__why-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--sk-accent-bg);
+  color: var(--sk-accent-strong);
+  border: 1px solid var(--sk-accent);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  line-height: 1;
+  transition: background var(--sk-transition-fast), color var(--sk-transition-fast), transform var(--sk-transition-fast);
+}
+
+.sk-f-verdict__why-btn:hover {
+  background: var(--sk-accent);
+  color: #fff;
+  transform: scale(1.08);
+}
+
+.sk-f-verdict__arrow {
+  font-size: 22px;
+  color: var(--sk-text-faint);
+}
+
+.sk-f-verdict__value--ok {
+  color: var(--sk-status-ok);
+}
+
+.sk-f-verdict__value--bad {
+  color: var(--sk-status-danger);
+}
+
+/* --- Два столбца: текущий этап + факторы риска --- */
+
+.sk-f-row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sk-space-4);
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .sk-f-row2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sk-f-stage-panel,
+.sk-f-risks-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.sk-f-stage-panel h2,
+.sk-f-risks-panel h2 {
+  margin: 0 0 var(--sk-space-3);
+  font-size: var(--sk-font-size-lg);
+}
+
+.sk-f-stage-panel__name {
+  font-weight: 600;
+  margin-bottom: var(--sk-space-3);
+}
+
+.sk-f-panel-link {
+  display: inline-block;
+  margin-top: auto;
+  padding-top: var(--sk-space-4);
+  color: var(--sk-accent-strong);
+  text-decoration: none;
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+}
+
+.sk-f-panel-link:hover {
+  text-decoration: underline;
+}
+
+/* --- Панели «что двигает срок» / «вне контроля» --- */
+
+.sk-f-alert-panel h2 {
+  margin-top: 0;
+  font-size: var(--sk-font-size-lg);
+}
+
+.sk-f-alert-panel ul {
+  margin: var(--sk-space-2) 0 0;
+  padding-left: var(--sk-space-5);
+  font-size: var(--sk-font-size-sm);
+  line-height: 1.6;
+}
+
+.sk-f-alert-panel--danger {
+  border-left: 3px solid var(--sk-status-danger);
+}
+
+.sk-f-alert-panel--warning {
+  border-left: 3px solid var(--sk-status-warning);
+}
+
+/* --- Факторы риска: значок --- */
+
+.sk-risk-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sk-risk-badge--danger {
+  background: var(--sk-status-danger-bg);
+  color: var(--sk-status-danger);
+}
+
+.sk-risk-badge--warning {
+  background: var(--sk-status-warning-bg);
+  color: var(--sk-status-warning);
+}
+
+.sk-risk-badge--ok {
+  background: var(--sk-status-ok-bg);
+  color: var(--sk-status-ok);
+}
+
+/*
+  --- Экспорт в PDF через браузерный диалог печати — без новых npm-зависимостей и
+  бэкенд-эндпоинта. Прячем сайдбар/топбар/кнопку, печатаем на светлом фоне.
+*/
+@media print {
+  .sk-sidebar,
+  .sk-topbar,
+  .sk-f-pdf-btn {
+    display: none !important;
+  }
+
+  .sk-shell__content {
+    padding: 0 !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  .sk-forecast-page {
+    color: #10151f;
+  }
+
+  .sk-forecast-page h1,
+  .sk-forecast-page h2 {
+    color: #10151f;
+  }
+
+  .sk-forecast-page .sk-panel,
+  .sk-f-verdict {
+    background: #fff !important;
+    border-color: #d7dce6 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  .sk-f-row2 {
+    grid-template-columns: 1fr !important;
+  }
+}

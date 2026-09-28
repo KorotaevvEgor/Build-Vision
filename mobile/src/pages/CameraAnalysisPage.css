@@ -1,0 +1,21 @@
+.sk-camera-preview {
+  width: 100%;
+  border-radius: var(--sk-radius-control);
+  margin-bottom: var(--sk-space-3);
+  display: block;
+}
+
+.sk-camera-analysis__error {
+  color: var(--sk-status-danger);
+  font-size: var(--sk-font-size-sm);
+  margin-top: var(--sk-space-3);
+}
+
+.sk-camera-analysis__stage {
+  padding: var(--sk-space-2) 0;
+  border-top: 1px solid var(--sk-border);
+}
+
+.sk-camera-analysis__stage:first-of-type {
+  border-top: none;
+}

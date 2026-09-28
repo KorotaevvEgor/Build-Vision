@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BuildVision</string>
+    <string name="title_activity_main">BuildVision</string>
+    <string name="package_name">ru.buildvision.app</string>
+    <string name="custom_url_scheme">ru.buildvision.app</string>
+</resources>

@@ -1,0 +1,152 @@
+.sk-header-weather-wrap {
+  position: relative;
+}
+
+.sk-header-weather {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  padding: var(--sk-space-2) var(--sk-space-4);
+  border-radius: var(--sk-radius-control);
+  border: 1px solid var(--sk-border);
+  background: var(--sk-surface-muted);
+  color: var(--sk-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sk-header-weather:hover {
+  border-color: var(--sk-border-strong);
+}
+
+.sk-header-weather--stale {
+  color: var(--sk-text-muted);
+}
+
+.sk-header-weather__temp {
+  font-size: var(--sk-font-size-lg);
+  font-weight: 700;
+}
+
+/*
+  «Liquid glass», но заметно плотнее обычного стекла сайдбара/топбара (см. AppShell.css):
+  поповер ложится поверх произвольного контента страницы (а не только фиксированного
+  фона body), поэтому общий --sk-glass-card слишком прозрачен и текст под ним просвечивает.
+*/
+.sk-header-weather-popover {
+  position: absolute;
+  top: calc(100% + var(--sk-space-2));
+  right: 0;
+  z-index: 1000;
+  width: 320px;
+  padding: var(--sk-space-4);
+  border-radius: var(--sk-radius-panel);
+  border: 1px solid var(--sk-glass-border);
+  background: rgba(6, 9, 16, 0.99);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  box-shadow: var(--sk-shadow-md);
+  color: var(--sk-text);
+}
+
+:root[data-theme="light"] .sk-header-weather-popover {
+  background: rgba(255, 255, 255, 0.99);
+}
+
+.sk-header-weather-popover__current {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-3);
+}
+
+/*
+  Фиксированный квадратный контейнер под иконку — избавляет от искажений,
+  которые давал inline-svg внутри grid/flex ячейки с переменной шириной
+  (иконки дождя/снега «плющило» под ширину соседних колонок).
+*/
+.sk-header-weather-popover__icon-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--sk-surface-muted);
+  border: 1px solid var(--sk-glass-border);
+  color: var(--sk-accent-strong);
+}
+
+.sk-header-weather-popover__icon-chip svg {
+  display: block;
+}
+
+.sk-header-weather-popover__icon-chip--lg {
+  width: 56px;
+  height: 56px;
+}
+
+.sk-header-weather-popover__temp {
+  font-size: var(--sk-font-size-xxl);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.sk-header-weather-popover__desc {
+  color: var(--sk-text-muted);
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-header-weather-popover__address {
+  margin-top: var(--sk-space-3);
+  padding-top: var(--sk-space-3);
+  border-top: 1px solid var(--sk-glass-border);
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+}
+
+.sk-header-weather-popover__meta {
+  margin-top: var(--sk-space-2);
+  display: flex;
+  gap: var(--sk-space-3);
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+}
+
+.sk-header-weather-popover__stale {
+  color: var(--sk-status-warning);
+}
+
+.sk-header-weather-popover__daily {
+  margin-top: var(--sk-space-3);
+  padding-top: var(--sk-space-3);
+  border-top: 1px solid var(--sk-glass-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+}
+
+/* Flex, а не grid: ширина колонок не «плавает» между строками, поэтому иконка
+   всегда остаётся ровным кружком независимо от длины даты/температуры рядом. */
+.sk-header-weather-popover__day {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-3);
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-header-weather-popover__day-label {
+  flex: 1;
+  color: var(--sk-text-muted);
+}
+
+.sk-header-weather-popover__day-temps {
+  min-width: 64px;
+  text-align: right;
+  font-weight: 600;
+}
+
+.sk-header-weather-popover__day-min {
+  font-weight: 400;
+  color: var(--sk-text-muted);
+}

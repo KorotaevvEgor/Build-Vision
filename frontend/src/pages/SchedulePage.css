@@ -1,0 +1,1042 @@
+/* Страница не должна листаться влево/вправо ни при каких условиях — дополнительный страховочный
+   слой поверх точечных overflow:hidden внутри диаграммы Ганта.
+   ВАЖНО: используем overflow-x: clip, а не hidden. "hidden" делает элемент scroll-контейнером
+   (per spec), даже если он никогда реально не скроллится — это ломает position: sticky у любого
+   потомка (в т.ч. у шапки диаграммы Ганта ниже), т.к. sticky начинает считаться относительно
+   этого несуществующего скролл-контейнера вместо реального скролла страницы. "clip" даёт то же
+   визуальное обрезание, но не создаёт scroll-контейнер. */
+.sk-schedule-page {
+  overflow-x: clip;
+}
+
+/* --- Заголовок страницы + переключатель вида --- */
+
+.sk-schedule-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sk-space-4);
+  flex-wrap: wrap;
+}
+
+.sk-schedule-header h1 {
+  margin: 0 0 2px;
+}
+
+.sk-schedule-header .sk-demo-note {
+  margin: 0;
+}
+
+.sk-schedule-header__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-3);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.sk-schedule-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--sk-surface-muted);
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius-control);
+  flex-shrink: 0;
+}
+
+.sk-schedule-tabs__btn {
+  padding: var(--sk-space-2) var(--sk-space-4);
+  border: none;
+  border-radius: calc(var(--sk-radius-control) - 4px);
+  background: transparent;
+  color: var(--sk-text-muted);
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--sk-transition-fast), color var(--sk-transition-fast);
+}
+
+.sk-schedule-tabs__btn:hover {
+  color: var(--sk-text);
+}
+
+.sk-schedule-tabs__btn--active {
+  background: var(--sk-accent);
+  color: #fff;
+}
+
+/* --- Итог по сроку сдачи объекта --- */
+
+.sk-delivery {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(0, 1.4fr);
+  gap: var(--sk-space-4);
+  margin-top: var(--sk-space-3);
+}
+
+@media (max-width: 900px) {
+  .sk-delivery {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.sk-delivery__verdict,
+.sk-delivery__dates {
+  background: var(--sk-surface);
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius-panel);
+  padding: var(--sk-space-4) var(--sk-space-5);
+  box-shadow: var(--sk-shadow-sm);
+}
+
+.sk-delivery__verdict {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-1);
+  border-left: 4px solid var(--sk-status-unknown);
+}
+
+.sk-delivery__verdict--behind {
+  border-left-color: var(--sk-status-danger);
+}
+
+.sk-delivery__verdict--on_track {
+  border-left-color: var(--sk-status-ok);
+}
+
+.sk-delivery__verdict--ahead {
+  border-left-color: var(--sk-accent-strong);
+}
+
+.sk-delivery__verdict strong {
+  font-size: var(--sk-font-size-lg);
+}
+
+.sk-delivery__shift {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-delivery__label {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-faint);
+}
+
+.sk-delivery__dates {
+  display: flex;
+  gap: var(--sk-space-6);
+  flex-wrap: wrap;
+}
+
+.sk-delivery__dates > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-1);
+}
+
+.sk-delivery__dates strong {
+  font-size: var(--sk-font-size-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Рабочая область: диаграмма+сводка слева, карточка этапа справа --- */
+
+.sk-schedule-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: var(--sk-space-4);
+  align-items: start;
+  margin-top: var(--sk-space-4);
+}
+
+@media (max-width: 1200px) {
+  .sk-schedule-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sk-schedule-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-4);
+  min-width: 0;
+}
+
+/* --- Диаграмма Ганта --- */
+
+.sk-gantt-card {
+  padding: 0;
+  /* overflow: clip, не hidden — см. пояснение у .sk-schedule-page выше. Раньше "hidden" здесь
+     ломало position: sticky у .sk-gantt-header-row (шапка съезжала вниз, под первый этап). */
+  overflow: clip;
+  border-radius: var(--sk-radius-panel);
+}
+
+/*
+  Раньше здесь был внутренний скролл (max-height + overflow-y) — он прятал нижние группы работ
+  (напр. «Подготовительные работы») за нижним краем коробки со своим скроллом. Теперь
+  диаграмма показывает все строки целиком, а скроллится, если надо, вся страница целиком —
+  без вложенной полоски внутри карточки.
+
+  Шапка (табличка «Этап/Задача» + месяцы/дни) объединена в ОДИН sticky-элемент
+  `.sk-gantt-header-row` с теми же ширинами колонок, что и тело `.sk-gantt-grid` ниже — раньше это были
+  два НЕЗАВИСИМЫХ sticky-элемента в двух колонках grid'а, и их выравнивание зависело от
+  совпадения высот колонок и легко ломалось (расхождение выглядело как шапка ниже первого этапа).
+  Сейчас это один элемент, и выравнивание гарантировано структурой, а не совпадением.
+*/
+:root {
+  --sk-gantt-name-col: 290px;
+}
+
+@media (max-width: 640px) {
+  /* На узких экранах колонка с названием этапа сужается, чтобы оставить больше места полосам
+     диаграммы -- названия всё равно читаемы (обрезаются с магией), а полное название есть в title/тултипе. */
+  :root {
+    --sk-gantt-name-col: 150px;
+  }
+}
+
+.sk-gantt-header-row {
+  position: sticky;
+  top: 64px;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: var(--sk-gantt-name-col) minmax(0, 1fr);
+  background: var(--sk-surface-elevated);
+  border-bottom: 1px solid var(--sk-border);
+  /* .sk-gantt-card больше не clip'ает через overflow:hidden без явного скругления, поэтому
+     скругляем верхние углы шапки сами, чтобы они совпадали с углами карточки-панели. */
+  border-radius: var(--sk-radius-panel) var(--sk-radius-panel) 0 0;
+}
+
+.sk-gantt-grid {
+  display: grid;
+  grid-template-columns: var(--sk-gantt-name-col) minmax(0, 1fr);
+  /* Жёстко запрещаем горизонтальную прокрутку — месяцы/дни/полосы всегда в процентах от
+     ширины колонки, а любой элемент, вылезающий за край (напр. метка «Сегодня» у правой
+     границы), просто обрезается, а не создаёт скролл. */
+  overflow-x: hidden;
+}
+
+.sk-gantt-task-side {
+  border-right: 1px solid var(--sk-border);
+  min-width: 0;
+}
+
+.sk-gantt-task-header {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--sk-space-3);
+  border-right: 1px solid var(--sk-border);
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+  color: var(--sk-text-muted);
+}
+
+.sk-gantt-task-header__percent {
+  flex-shrink: 0;
+}
+
+.sk-gantt-timeline-wrap {
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.sk-gantt-month-head {
+  /* Нужно position:relative, чтобы абсолютно позиционированная метка «Segodnya» ниже считала left:%
+     от этого элемента (т.е. от ширины колонки таймлайна), а не от всей шапки
+     целиком — `.sk-gantt-header-row` является position:sticky, т.е. сам позиционирован,
+     и без этого правила метка выбирала его в качестве containing block, смещая бейдж
+     влево на ширину колонки с названием этапа и не совпадая с пунктирной линией «сегодня». */
+  position: relative;
+  overflow: hidden;
+}
+
+.sk-gantt-months {
+  display: flex;
+  height: 22px;
+  border-bottom: 1px solid var(--sk-border);
+}
+
+.sk-gantt-months > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--sk-border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sk-text-muted);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.sk-gantt-days {
+  position: relative;
+  height: 18px;
+}
+
+.sk-gantt-days span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--sk-text-faint);
+}
+
+.sk-gantt-today-label {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+  background: var(--sk-status-danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 3px;
+  padding: 2px 6px;
+  z-index: 3;
+  white-space: nowrap;
+}
+
+.sk-gantt-timeline {
+  position: relative;
+}
+
+.sk-gantt-today-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px dashed var(--sk-status-danger);
+  opacity: 0.75;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.sk-gantt-timeline-rows {
+  position: relative;
+}
+
+.sk-gantt-timeline-row {
+  position: relative;
+  height: 30px;
+  border-bottom: 1px solid var(--sk-border);
+}
+
+.sk-gantt-timeline-row--summary {
+  height: 52px;
+  background: var(--sk-surface-muted);
+}
+
+.sk-gantt-bar {
+  position: absolute;
+  top: 8px;
+  height: 14px;
+  border-radius: 4px;
+  box-shadow: var(--sk-shadow-sm);
+}
+
+.sk-gantt-timeline-row--summary .sk-gantt-bar {
+  top: 20px;
+  height: 8px;
+  border: 1px solid var(--sk-border-strong);
+}
+
+.sk-gantt-bar--overrun {
+  top: 8px;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--sk-status-warning),
+    var(--sk-status-warning) 3px,
+    transparent 3px,
+    transparent 6px
+  );
+  border: 1px solid var(--sk-status-warning);
+}
+
+/* --- Строки списка работ (левая колонка) --- */
+
+.sk-network {
+  display: flex;
+  flex-direction: column;
+}
+
+.sk-network-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sk-space-2);
+  height: 30px;
+  padding: 0 var(--sk-space-3);
+  border: none;
+  border-bottom: 1px solid var(--sk-border);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--sk-text);
+  width: 100%;
+}
+
+.sk-network-row--summary {
+  height: 52px;
+  background: var(--sk-surface-muted);
+  font-weight: 600;
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-network-row:hover {
+  background: var(--sk-glass-card-hover);
+}
+
+.sk-network-row--selected {
+  background: var(--sk-accent-bg);
+  box-shadow: inset 2px 0 0 var(--sk-accent);
+}
+
+.sk-network-row__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.sk-network-row__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-network-row__number {
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--sk-accent-strong);
+  min-width: 20px;
+}
+
+.sk-network-row__number--leaf {
+  font-weight: 600;
+  color: var(--sk-text-faint);
+}
+
+.sk-network-row__bullet {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sk-network-row__critical {
+  color: var(--sk-status-danger);
+  font-size: 10px;
+  flex: none;
+}
+
+.sk-network-row__percent {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sk-text-muted);
+  flex-shrink: 0;
+}
+
+.sk-network-row__group-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sk-text);
+  flex-shrink: 0;
+}
+
+.sk-network-row__mini-progress {
+  display: inline-block;
+  width: 44px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--sk-surface);
+  overflow: hidden;
+}
+
+.sk-network-row__mini-progress i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+/* --- Легенда диаграммы --- */
+
+.sk-gantt-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sk-space-4);
+  padding: var(--sk-space-3) var(--sk-space-4);
+  border-top: 1px solid var(--sk-border);
+  font-size: 11px;
+  color: var(--sk-text-muted);
+  /* Последний блок в карточке — скругляем нижние углы вместо родительского overflow:hidden. */
+  border-radius: 0 0 var(--sk-radius-panel) var(--sk-radius-panel);
+}
+
+.sk-gantt-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.sk-gantt-legend__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.sk-gantt-legend__stripe {
+  width: 18px;
+  height: 10px;
+  border: 1px solid var(--sk-status-warning);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--sk-status-warning),
+    var(--sk-status-warning) 3px,
+    transparent 3px,
+    transparent 6px
+  );
+  display: inline-block;
+}
+
+/* --- Сводка под диаграммой: KPI / события / прогресс по разделам --- */
+
+.sk-schedule-summary {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 0;
+  padding: 0;
+}
+
+@media (max-width: 900px) {
+  .sk-schedule-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sk-schedule-summary__section {
+  padding: var(--sk-space-4);
+  min-width: 0;
+}
+
+.sk-schedule-summary__section + .sk-schedule-summary__section {
+  border-left: 1px solid var(--sk-border);
+}
+
+@media (max-width: 900px) {
+  .sk-schedule-summary__section + .sk-schedule-summary__section {
+    border-left: none;
+    border-top: 1px solid var(--sk-border);
+  }
+}
+
+.sk-schedule-summary__title {
+  font-size: var(--sk-font-size-sm);
+  font-weight: 700;
+  margin-bottom: var(--sk-space-3);
+}
+
+.sk-schedule-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sk-space-2);
+}
+
+.sk-schedule-kpi {
+  position: relative;
+  padding: var(--sk-space-2) var(--sk-space-3);
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius-control);
+  background: var(--sk-surface-muted);
+}
+
+.sk-schedule-kpi__label {
+  font-size: 10px;
+  color: var(--sk-text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sk-schedule-kpi__number {
+  font-size: var(--sk-font-size-lg);
+  font-weight: 700;
+  margin-top: var(--sk-space-2);
+}
+
+.sk-schedule-kpi__foot {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  font-size: 10px;
+  color: var(--sk-text-faint);
+}
+
+.sk-schedule-upcoming {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+}
+
+.sk-schedule-upcoming__row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: var(--sk-space-2);
+  font-size: 11px;
+  color: var(--sk-text-muted);
+}
+
+.sk-schedule-upcoming__date {
+  color: var(--sk-text);
+  font-weight: 600;
+}
+
+.sk-schedule-upcoming__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-pill {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--sk-surface-muted);
+  border: 1px solid var(--sk-border-strong);
+  color: var(--sk-text-muted);
+  white-space: nowrap;
+}
+
+.sk-pill--green {
+  background: var(--sk-status-ok-bg);
+  color: var(--sk-status-ok);
+  border-color: var(--sk-status-ok);
+}
+
+.sk-pill--red {
+  background: var(--sk-status-danger-bg);
+  color: var(--sk-status-danger);
+  border-color: var(--sk-status-danger);
+}
+
+.sk-schedule-stage-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+}
+
+.sk-schedule-stage-line {
+  display: grid;
+  grid-template-columns: 110px 1fr 32px;
+  align-items: center;
+  gap: var(--sk-space-2);
+  font-size: 11px;
+  color: var(--sk-text-muted);
+}
+
+.sk-schedule-stage-line > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-schedule-stage-line__track {
+  height: 8px;
+  background: var(--sk-surface-muted);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.sk-schedule-stage-line__fill {
+  height: 100%;
+  background: var(--sk-status-ok);
+  border-radius: 4px;
+}
+
+.sk-schedule-stage-line b {
+  text-align: right;
+  color: var(--sk-text);
+  font-weight: 600;
+}
+
+/*
+  --- Карточка выбранного этапа (справа) — левая колонка (график + сводка + погода) теперь
+  выше этой карточки, поэтому ограничиваем её высоту и приклеиваем к верху при прокрутке —
+  иначе длинный список событий зоны тянет страницу вниз.
+*/
+
+.sk-stage-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: sticky;
+  top: var(--sk-space-4);
+  max-height: 82vh;
+  overflow-y: auto;
+  /* Тонкий скроллбар в стиле проекта вместо стандартного системного бегунка браузера —
+     он заметен на тёмном фоне и выбивается из общего оформления. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--sk-border-strong) transparent;
+}
+
+.sk-stage-detail::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sk-stage-detail::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sk-stage-detail::-webkit-scrollbar-thumb {
+  background: var(--sk-border-strong);
+  border-radius: 999px;
+}
+
+.sk-stage-detail::-webkit-scrollbar-thumb:hover {
+  background: var(--sk-text-faint);
+}
+
+.sk-stage-detail__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sk-space-2);
+}
+
+.sk-stage-detail__head h2 {
+  margin: 0 0 4px;
+  font-size: var(--sk-font-size-lg);
+}
+
+.sk-stage-detail__sub {
+  font-size: 12px;
+  color: var(--sk-text-faint);
+}
+
+.sk-stage-detail__badge {
+  flex-shrink: 0;
+  border: 1px solid;
+  border-radius: var(--sk-radius-control);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sk-stage-detail__tabs {
+  display: flex;
+  gap: var(--sk-space-2);
+  margin: var(--sk-space-3) 0;
+  border-bottom: 1px solid var(--sk-border);
+}
+
+.sk-stage-detail__tabs button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: var(--sk-space-2);
+  color: var(--sk-text-muted);
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--sk-radius-control) var(--sk-radius-control) 0 0;
+}
+
+.sk-stage-detail__tab--active {
+  background: var(--sk-accent);
+  color: #fff !important;
+}
+
+.sk-stage-detail__block {
+  padding: var(--sk-space-3) 0;
+  border-bottom: 1px solid var(--sk-border);
+}
+
+.sk-stage-detail__block--last {
+  border-bottom: none;
+}
+
+.sk-stage-detail__block-title {
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+  margin-bottom: var(--sk-space-3);
+}
+
+.sk-progress-flex {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-4);
+}
+
+.sk-progress-ring {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.sk-progress-ring::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: var(--sk-surface);
+}
+
+.sk-progress-ring span {
+  position: relative;
+  z-index: 1;
+  font-size: var(--sk-font-size-base);
+  font-weight: 700;
+}
+
+.sk-plan-fact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+  flex: 1;
+}
+
+.sk-plan-fact small {
+  display: block;
+  font-size: 11px;
+  color: var(--sk-text-faint);
+}
+
+.sk-plan-fact strong {
+  font-size: var(--sk-font-size-base);
+  font-weight: 600;
+}
+
+.sk-date-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+}
+
+.sk-date-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  align-items: center;
+  gap: var(--sk-space-2);
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text);
+}
+
+.sk-date-row small {
+  display: block;
+  color: var(--sk-text-faint);
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+.sk-date-row__delay {
+  color: var(--sk-status-danger);
+  font-size: var(--sk-font-size-sm);
+  font-weight: 700;
+}
+
+.sk-stage-alert {
+  margin: var(--sk-space-3) 0;
+  border: 1px solid var(--sk-status-danger);
+  background: var(--sk-status-danger-bg);
+  border-radius: var(--sk-radius-control);
+  padding: var(--sk-space-3);
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: var(--sk-space-2);
+}
+
+.sk-stage-alert__icon {
+  width: 20px;
+  height: 20px;
+  background: var(--sk-status-danger);
+  color: #fff;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.sk-stage-alert strong {
+  display: block;
+  color: var(--sk-status-danger);
+  font-size: var(--sk-font-size-sm);
+  margin-bottom: 4px;
+}
+
+.sk-stage-alert p {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--sk-text-muted);
+  margin: 0 0 4px;
+}
+
+.sk-last-events {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+}
+
+.sk-last-event {
+  display: grid;
+  grid-template-columns: 12px 40px 1fr;
+  gap: var(--sk-space-2);
+  align-items: start;
+  font-size: 11px;
+  color: var(--sk-text-muted);
+}
+
+.sk-last-event__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sk-accent);
+  margin-top: 4px;
+}
+
+.sk-last-event__time {
+  color: var(--sk-text-faint);
+}
+
+.sk-last-event small {
+  display: block;
+  color: var(--sk-text-faint);
+  margin-top: 1px;
+}
+
+/* --- Список техники этапа (вкладка «Техника») --- */
+
+.sk-equipment-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.sk-equipment-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto 20px;
+  align-items: center;
+  gap: var(--sk-space-2);
+  padding: var(--sk-space-2) 0;
+  border-bottom: 1px solid var(--sk-border);
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-equipment-row:last-child {
+  border-bottom: none;
+}
+
+.sk-equipment-row__icon {
+  font-size: 22px;
+}
+
+.sk-equipment-row__count {
+  color: var(--sk-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-equipment-row__status {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--sk-status-ok-bg);
+  color: var(--sk-status-ok);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sk-equipment-row__status--warn {
+  background: var(--sk-status-danger-bg);
+  color: var(--sk-status-danger);
+}
+
+/* --- Динамика проекта: кривые план/факт/прогноз --- */
+
+.sk-schedule-dynamics {
+  margin-top: var(--sk-space-4);
+}
+
+.sk-schedule-dynamics h2 {
+  margin: 0 0 var(--sk-space-3);
+  font-size: var(--sk-font-size-lg);
+}
+
+/* --- Влияние факторов (донат) + таблица рисков --- */
+
+.sk-schedule-risk-row {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.6fr) minmax(0, 1fr);
+  gap: var(--sk-space-4);
+  margin-top: var(--sk-space-4);
+  align-items: stretch;
+}
+
+@media (max-width: 1100px) {
+  .sk-schedule-risk-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sk-schedule-risk-donut h2,
+.sk-schedule-risk-table h2 {
+  margin: 0 0 var(--sk-space-3);
+  font-size: var(--sk-font-size-lg);
+}
+
+/* --- Что двигает срок и что вне контроля --- */
+
+.sk-schedule-alert,
+.sk-schedule-unverified {
+  margin-top: var(--sk-space-4);
+}
+
+.sk-schedule-alert {
+  border-left: 3px solid var(--sk-status-danger);
+}
+
+.sk-schedule-unverified {
+  border-left: 3px solid var(--sk-status-warning);
+}
+
+.sk-schedule-alert h2,
+.sk-schedule-unverified h2 {
+  margin-top: 0;
+  font-size: var(--sk-font-size-lg);
+}
+
+.sk-schedule-alert ul,
+.sk-schedule-unverified ul {
+  margin: var(--sk-space-2) 0 0;
+  padding-left: var(--sk-space-5);
+  font-size: var(--sk-font-size-sm);
+  line-height: 1.6;
+}
+
+/* --- Таблица «Список» --- */
+
+.sk-table__row--selected {
+  background: var(--sk-accent-bg);
+}

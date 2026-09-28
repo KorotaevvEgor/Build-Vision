@@ -1,0 +1,98 @@
+.sk-cameras-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--sk-space-3);
+}
+
+.sk-camera-tile {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius-panel);
+  overflow: hidden;
+  background: var(--sk-surface-elevated);
+  text-decoration: none;
+  color: inherit;
+}
+
+.sk-camera-tile__media {
+  position: relative;
+  height: 120px;
+  background: var(--sk-surface-muted);
+  overflow: hidden;
+}
+
+.sk-camera-tile__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sk-camera-tile__img--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sk-text-faint);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.sk-camera-tile__dot {
+  position: absolute;
+  top: var(--sk-space-2);
+  left: var(--sk-space-2);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--sk-text-faint);
+  border: 2px solid rgba(11, 15, 26, 0.6);
+}
+
+.sk-camera-tile__dot--online {
+  background: var(--sk-status-ok);
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.25);
+}
+
+.sk-camera-tile__badge {
+  position: absolute;
+  top: var(--sk-space-1);
+  right: var(--sk-space-1);
+  transform: scale(0.85);
+  transform-origin: top right;
+}
+
+.sk-camera-tile__scrim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--sk-space-3) var(--sk-space-2) var(--sk-space-1);
+  background: linear-gradient(to top, rgba(6, 9, 16, 0.88), rgba(6, 9, 16, 0));
+  color: #fff;
+}
+
+.sk-camera-tile__name {
+  font-weight: 700;
+  font-size: var(--sk-font-size-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-camera-tile__zone {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.75);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-camera-tile__footer {
+  padding: var(--sk-space-1) var(--sk-space-2) var(--sk-space-2);
+}
+
+.sk-camera-tile__time {
+  font-size: 11px;
+  color: var(--sk-text-faint);
+}

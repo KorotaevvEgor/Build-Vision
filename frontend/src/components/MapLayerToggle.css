@@ -1,0 +1,32 @@
+.sk-map-layer-toggle {
+  position: absolute;
+  top: var(--sk-space-2);
+  right: var(--sk-space-2);
+  z-index: 1000;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--sk-radius-control);
+  background: var(--sk-surface);
+  border: 1px solid var(--sk-border);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.sk-map-layer-toggle__btn {
+  border: none;
+  background: transparent;
+  color: var(--sk-text-muted);
+  font-size: var(--sk-font-size-sm);
+  padding: 4px 10px;
+  border-radius: calc(var(--sk-radius-control) - 2px);
+  cursor: pointer;
+}
+
+.sk-map-layer-toggle__btn:hover {
+  color: var(--sk-text);
+}
+
+.sk-map-layer-toggle__btn--active {
+  background: var(--sk-accent);
+  color: #fff;
+}

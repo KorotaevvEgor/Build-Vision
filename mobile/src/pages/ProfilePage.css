@@ -1,0 +1,99 @@
+.sk-account-section {
+  margin-bottom: var(--sk-space-4);
+}
+
+.sk-account-section h2 {
+  margin-top: 0;
+}
+
+.sk-account-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-3);
+  margin-bottom: var(--sk-space-4);
+}
+
+.sk-account-avatar {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--sk-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sk-account-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sk-account-avatar__placeholder {
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.sk-account-avatar__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+}
+
+.sk-account-avatar__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-1);
+  align-items: flex-start;
+}
+
+.sk-account-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sk-space-2) var(--sk-space-3);
+  margin: 0 0 var(--sk-space-4);
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-account-info dt {
+  color: var(--sk-text-faint);
+  font-size: 11px;
+}
+
+.sk-account-info dd {
+  margin: 0;
+}
+
+.sk-account-position__row {
+  display: flex;
+  gap: var(--sk-space-2);
+}
+
+.sk-account-position__row input {
+  flex: 1;
+}
+
+.sk-account-error {
+  color: var(--sk-status-danger);
+  font-size: var(--sk-font-size-sm);
+  margin: var(--sk-space-1) 0 0;
+}
+
+.sk-account-success {
+  color: var(--sk-status-ok);
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-account-danger {
+  margin-top: var(--sk-space-4);
+  padding-top: var(--sk-space-4);
+  border-top: 1px solid var(--sk-border);
+}

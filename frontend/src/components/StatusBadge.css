@@ -1,0 +1,42 @@
+.sk-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sk-space-1);
+  padding: var(--sk-space-1) var(--sk-space-3);
+  border-radius: var(--sk-radius-control);
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sk-status-badge::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sk-status-badge--ok {
+  background: var(--sk-status-ok-bg);
+  color: var(--sk-status-ok);
+}
+.sk-status-badge--ok::before {
+  background: var(--sk-status-ok);
+}
+
+.sk-status-badge--warning {
+  background: var(--sk-status-warning-bg);
+  color: var(--sk-status-warning);
+}
+.sk-status-badge--warning::before {
+  background: var(--sk-status-warning);
+}
+
+.sk-status-badge--unknown {
+  background: var(--sk-status-unknown-bg);
+  color: var(--sk-status-unknown);
+}
+.sk-status-badge--unknown::before {
+  background: var(--sk-status-unknown);
+}

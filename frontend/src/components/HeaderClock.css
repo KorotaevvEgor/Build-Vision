@@ -1,0 +1,23 @@
+.sk-header-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.25;
+  padding: 0 var(--sk-space-2);
+}
+
+.sk-header-clock__date {
+  font-size: 11px;
+  color: var(--sk-text-faint);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.sk-header-clock__time {
+  font-size: var(--sk-font-size-base);
+  font-weight: 700;
+  color: var(--sk-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: center;
+}

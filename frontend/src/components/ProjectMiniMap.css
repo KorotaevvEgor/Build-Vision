@@ -1,0 +1,26 @@
+.sk-project-minimap {
+  height: 140px;
+  border-radius: var(--sk-radius-control);
+  overflow: hidden;
+  background: var(--sk-surface-muted);
+}
+
+.sk-project-minimap--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sk-text-muted);
+  font-size: var(--sk-font-size-sm);
+  text-align: center;
+  padding: var(--sk-space-2);
+}
+
+.sk-project-minimap-marker span {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--sk-status-danger);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+}

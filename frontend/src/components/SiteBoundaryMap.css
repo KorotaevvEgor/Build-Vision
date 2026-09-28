@@ -1,0 +1,26 @@
+.sk-boundary-map {
+  position: relative;
+  border-radius: var(--sk-radius-control);
+  overflow: hidden;
+  background: var(--sk-surface-muted);
+}
+
+.sk-boundary-map-marker span {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--sk-status-danger);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.sk-boundary-map-vertex span {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #34d399;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+}

@@ -1,0 +1,932 @@
+/*
+  Страница больше НЕ принудительно подгоняется под высоту экрана без прокрутки: на невысоких
+  экранах (ноутбуки с масштабированием) это сжимало фото с камеры до тонкой полоски — выглядело
+  как «обрезание». Теперь у фото (.sk-camera-card__frame) есть собственный min-height, а
+  страница при нехватке места просто скроллится целиком, как остальные страницы приложения.
+*/
+.sk-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-3);
+}
+
+.sk-dashboard > .sk-demo-note,
+.sk-dashboard > .sk-panel--error {
+  flex-shrink: 0;
+}
+
+/* --- Верхние карточки-счётчики --- */
+
+.sk-stat-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sk-space-4);
+  flex-shrink: 0;
+}
+
+.sk-stat-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  padding: var(--sk-space-2) var(--sk-space-3);
+}
+
+.sk-stat-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--sk-radius-control);
+  background: var(--sk-accent-bg);
+  color: var(--sk-accent-strong);
+  font-size: 19px;
+  flex-shrink: 0;
+}
+
+.sk-stat-card__icon--ok {
+  background: var(--sk-status-ok-bg);
+  color: var(--sk-status-ok);
+}
+.sk-stat-card__icon--warning {
+  background: var(--sk-status-warning-bg);
+  color: var(--sk-status-warning);
+}
+.sk-stat-card__icon--danger {
+  background: var(--sk-status-danger-bg);
+  color: var(--sk-status-danger);
+}
+
+.sk-stat-card__value {
+  font-size: var(--sk-font-size-lg);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.sk-stat-card__label {
+  font-size: 12px;
+  color: var(--sk-text-muted);
+}
+
+.sk-stat-card__hint {
+  font-size: 11px;
+  color: var(--sk-text-faint);
+  margin-top: 1px;
+  font-weight: 600;
+}
+
+.sk-stat-card__hint--ok {
+  color: var(--sk-status-ok);
+}
+.sk-stat-card__hint--warning {
+  color: var(--sk-status-warning);
+}
+.sk-stat-card__hint--danger {
+  color: var(--sk-status-danger);
+}
+
+/* --- Общая сетка: большая камера + нижний ряд слева, отклонения справа --- */
+
+.sk-dashboard__grid2 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--sk-space-5);
+  flex: 1;
+  min-height: 0;
+  /* Без этого grid по умолчанию растягивает обе колонки по высоте друг под друга
+     (align-items: stretch по умолчанию) — когда правая колонка (отклонения+карта)
+     выше левой, это растягивало кадр камеры гораздо больше нужного и оставляло
+     большой пустой отступ после фото. Каждая колонка теперь высотой по своему содержимому. */
+  align-items: start;
+}
+
+.sk-dashboard__main2 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-4);
+  min-height: 0;
+}
+
+/*
+  Нижний ряд из трёх карточек на всю ширину левой колонки: этап / техника / динамика.
+  Карта площадки теперь под блоком отклонений справа (см. .sk-dashboard__aside).
+  Высота зафиксирована и намеренно небольшая — карточки широкие и низкие,
+  чтобы оставить максимум высоты под фото с камеры выше.
+*/
+.sk-dashboard__secondary-row {
+  display: grid;
+  grid-template-columns: 1.05fr 1.8fr 1.45fr;
+  gap: var(--sk-space-4);
+  align-items: stretch;
+  flex-shrink: 0;
+  height: 192px;
+}
+
+.sk-dashboard__secondary-row .sk-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--sk-space-3) var(--sk-space-4);
+}
+
+.sk-dashboard__secondary-row .sk-deviation-panel__link {
+  margin-top: auto;
+  padding-top: 6px;
+  flex-shrink: 0;
+}
+
+.sk-dashboard__secondary-row h2 {
+  margin: 0 0 6px;
+  font-size: var(--sk-font-size-sm);
+  flex-shrink: 0;
+}
+
+.sk-dashboard__secondary-row .sk-table__muted {
+  font-size: 11px;
+  margin: 0 0 4px;
+  flex-shrink: 0;
+}
+
+.sk-dashboard__secondary-row .sk-empty-state {
+  padding: 0;
+  font-size: 12px;
+  margin: 0;
+}
+
+@media (max-width: 1300px) {
+  .sk-dashboard__secondary-row {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+@media (max-width: 1100px) {
+  .sk-dashboard {
+    height: auto;
+    min-height: 0;
+  }
+  .sk-dashboard__grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .sk-dashboard__secondary-row {
+    grid-template-columns: 1fr;
+    /* В одну колонку три карточки ставятся друг под другом — фиксированная высота одной строки (192px)
+       сжала бы все три в эту высоту суммарно. */
+    height: auto;
+  }
+
+  .sk-dashboard__secondary-row .sk-panel {
+    min-height: 160px;
+  }
+}
+
+@media (max-width: 700px) {
+  .sk-stat-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .sk-camera-card__frame {
+    min-height: 260px;
+  }
+}
+
+/* --- Текущий этап --- */
+
+.sk-current-stage__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sk-space-2);
+}
+
+.sk-current-stage__percent {
+  font-size: var(--sk-font-size-lg);
+  font-weight: 700;
+  color: var(--sk-accent-strong);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-current-stage__percent--danger {
+  color: var(--sk-status-danger);
+}
+
+.sk-current-stage__title {
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0 0 8px;
+  overflow-wrap: break-word;
+}
+
+.sk-progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--sk-surface-muted);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.sk-progress-bar__fill {
+  height: 100%;
+  background: var(--sk-accent);
+  border-radius: 999px;
+  transition: width var(--sk-transition-base);
+}
+
+.sk-current-stage__meta {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--sk-text-muted);
+}
+
+/* --- Большая карточка камеры --- */
+
+.sk-camera-card {
+  padding: var(--sk-space-4);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.sk-camera-card__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sk-space-2);
+  margin-bottom: var(--sk-space-3);
+  flex-shrink: 0;
+}
+
+.sk-camera-card__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  padding: var(--sk-space-1) var(--sk-space-3);
+  border-radius: 999px;
+  border: 1px solid var(--sk-border-strong);
+  background: var(--sk-surface-muted);
+  color: var(--sk-text-muted);
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--sk-transition-fast), color var(--sk-transition-fast);
+}
+
+.sk-camera-card__pill:hover {
+  color: var(--sk-text);
+}
+
+.sk-camera-card__pill--active {
+  background: var(--sk-accent-bg);
+  border-color: var(--sk-accent);
+  color: var(--sk-accent-strong);
+}
+
+.sk-camera-card__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sk-text-faint);
+  flex-shrink: 0;
+}
+
+.sk-camera-card__dot--online {
+  background: var(--sk-status-ok);
+}
+
+/* Строка над снимком: индикатор «в эфире», время последнего кадра и кнопки истории — имя камеры уже есть
+   в переключателе пилюль выше, повторять его здесь избыточно. */
+.sk-camera-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  padding: 0 var(--sk-space-1) var(--sk-space-3);
+  flex-shrink: 0;
+}
+
+.sk-camera-card__live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--sk-text-faint);
+  flex-shrink: 0;
+}
+
+.sk-camera-card__live-dot--on {
+  background: var(--sk-status-ok);
+  box-shadow: 0 0 0 3px var(--sk-status-ok-bg);
+}
+
+.sk-camera-card__head-time {
+  margin-left: auto;
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-faint);
+}
+
+.sk-camera-card__history-badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--sk-status-warning-bg);
+  color: var(--sk-status-warning);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.sk-camera-card__history-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  flex-shrink: 0;
+}
+
+.sk-camera-card__history-btn {
+  padding: 4px 12px;
+  border-radius: var(--sk-radius-control);
+  border: 1px solid var(--sk-border-strong);
+  background: var(--sk-surface-muted);
+  color: var(--sk-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--sk-transition-fast), color var(--sk-transition-fast), opacity var(--sk-transition-fast);
+  white-space: nowrap;
+}
+
+.sk-camera-card__history-btn:hover:not(:disabled) {
+  background: var(--sk-accent-bg);
+  color: var(--sk-accent-strong);
+}
+
+.sk-camera-card__history-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sk-camera-card__history-btn--live {
+  background: var(--sk-accent-bg);
+  border-color: var(--sk-accent);
+  color: var(--sk-accent-strong);
+}
+
+/* Значок «на дату снимка» рядом с заголовком карточки «Текущий этап» в режиме истории. */
+.sk-current-stage__badge {
+  margin-left: var(--sk-space-2);
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--sk-status-warning-bg);
+  color: var(--sk-status-warning);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+}
+
+.sk-camera-card__frame {
+  position: relative;
+  border-radius: var(--sk-radius-control);
+  overflow: hidden;
+  border: 1px solid var(--sk-border);
+  background: var(--sk-surface-muted);
+  flex: 1;
+  /* Достаточный минимум, чтобы фото всегда было хорошо видно — раньше здесь было 180px,
+     и на невысоких экранах фиксированная высота страницы сжимала рамку до этого минимума,
+     превращая фото в тонкую полоску. */
+  min-height: 440px;
+}
+
+.sk-camera-card__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.sk-camera-card__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--sk-text-faint);
+  font-style: italic;
+}
+
+/* Всегда видимая легенда обнаруженной техники поверх снимка (левый верхний угол). */
+.sk-camera-card__legend {
+  position: absolute;
+  top: var(--sk-space-3);
+  left: var(--sk-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--sk-space-2) var(--sk-space-3) var(--sk-space-2) var(--sk-space-2);
+  border-radius: var(--sk-radius-control);
+  background: rgba(11, 15, 26, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 12px;
+  min-width: 172px;
+  box-shadow: var(--sk-shadow-md);
+}
+
+.sk-camera-card__legend-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 0 0 2px var(--sk-space-1);
+}
+
+.sk-camera-card__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 2px var(--sk-space-1);
+}
+
+.sk-camera-card__legend-label {
+  flex: 1;
+}
+
+.sk-camera-card__legend-unsure {
+  margin-left: 2px;
+  color: var(--sk-status-warning);
+  font-size: 9px;
+}
+
+.sk-camera-card__legend-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-camera-card__legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Всплывающее уведомление о критическом отклонении поверх снимка — левый нижний угол (чтобы не
+   перекрываться с легендой техники сверху слева). */
+.sk-camera-card__toast {
+  position: absolute;
+  left: var(--sk-space-3);
+  bottom: var(--sk-space-3);
+  max-width: 300px;
+  padding: var(--sk-space-3);
+  border-radius: var(--sk-radius-control);
+  background: rgba(20, 10, 10, 0.85);
+  border: 1px solid var(--sk-status-danger);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  box-shadow: var(--sk-shadow-md);
+}
+
+.sk-camera-card__toast-title {
+  font-weight: 700;
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-status-danger);
+}
+
+.sk-camera-card__toast-message {
+  margin: var(--sk-space-1) 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.sk-camera-card__toast-list {
+  list-style: none;
+  margin: var(--sk-space-1) 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sk-camera-card__toast-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sk-space-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sk-camera-card__toast-count {
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.sk-camera-card__toast-meta {
+  margin-top: var(--sk-space-1);
+  padding-top: var(--sk-space-1);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.sk-camera-card__toast-link {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  text-decoration: underline;
+}
+
+/* --- Bbox поверх снимка камеры (та же схема, что и на странице AI-анализа) --- */
+
+.sk-bbox {
+  position: absolute;
+  border: 2px solid var(--sk-accent);
+  background: rgba(11, 111, 104, 0.08);
+}
+
+.sk-bbox--ambiguous {
+  border-color: var(--sk-status-warning);
+  background: rgba(183, 121, 31, 0.1);
+  border-style: dashed;
+}
+
+.sk-bbox--distractor {
+  border-color: var(--sk-text-faint);
+  background: transparent;
+}
+
+.sk-bbox__label {
+  position: absolute;
+  top: -20px;
+  left: -2px;
+  background-color: var(--sk-accent);
+  color: white;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.sk-bbox--ambiguous .sk-bbox__label {
+  background-color: var(--sk-status-warning);
+}
+
+.sk-class-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: var(--sk-space-2);
+}
+
+/* --- Мини-карточки план/факт «Техника на площадке» --- */
+
+.sk-eq-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: var(--sk-space-2);
+  align-content: flex-start;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.sk-eq {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: var(--sk-space-2) var(--sk-space-2) 10px;
+  min-height: 108px;
+  border-radius: var(--sk-radius-control);
+  background: linear-gradient(180deg, var(--sk-surface-muted), var(--sk-surface));
+  border: 1px solid var(--sk-border);
+  box-shadow: var(--sk-shadow-sm);
+  text-align: center;
+  transition: transform var(--sk-transition-fast), box-shadow var(--sk-transition-fast);
+}
+
+.sk-eq:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sk-shadow-md);
+}
+
+.sk-eq__icon {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.sk-eq__count {
+  font-weight: 700;
+  font-size: var(--sk-font-size-lg);
+}
+
+.sk-eq__label {
+  font-size: 11px;
+  color: var(--sk-text-muted);
+  line-height: 1.2;
+}
+
+.sk-eq--ok {
+  border-color: var(--sk-status-ok);
+  background: linear-gradient(180deg, var(--sk-status-ok-bg), var(--sk-surface));
+}
+
+.sk-eq--bad {
+  border-color: var(--sk-status-danger);
+  background: linear-gradient(180deg, var(--sk-status-danger-bg), var(--sk-surface));
+}
+
+.sk-eq--bad .sk-eq__count {
+  color: var(--sk-status-danger);
+}
+
+/* --- Компактный график «Динамика отклонений» --- */
+
+.sk-mini-bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  margin: 6px 0;
+}
+
+.sk-mini-bar-chart__col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.sk-mini-bar-chart__track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  background: var(--sk-surface-muted);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.sk-mini-bar-chart__bar {
+  width: 100%;
+  background: var(--sk-status-danger);
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+  transition: height var(--sk-transition-base);
+}
+
+.sk-mini-bar-chart__label {
+  font-size: 10px;
+  color: var(--sk-text-faint);
+  white-space: nowrap;
+}
+
+/* --- Правая колонка: отклонения сверху, карта площадки под ними --- */
+
+.sk-dashboard__aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-4);
+  min-height: 0;
+}
+
+/* --- Карта площадки (под блоком отклонений) --- */
+
+.sk-map-panel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  /* Ссылка «Открыть карту» переехала в шапку заголовка — высвободившуюся строку
+     отдали самой карте, поэтому общая высота карточки выросла. */
+  height: 262px;
+}
+
+.sk-map-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sk-space-2);
+  margin-bottom: var(--sk-space-3);
+  flex-shrink: 0;
+}
+
+.sk-map-panel__head h2 {
+  margin: 0;
+  font-size: var(--sk-font-size-lg);
+}
+
+.sk-map-panel__link {
+  flex-shrink: 0;
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+  color: var(--sk-accent-strong);
+  text-decoration: none;
+}
+
+.sk-map-panel__link:hover {
+  text-decoration: underline;
+}
+
+.sk-map-panel .sk-mini-site-map {
+  flex: 1;
+  min-height: 100px;
+  height: auto;
+}
+
+/* --- Последние отклонения (справа) — карточки в стиле «алертов». Показываем не шесть подряд,
+   а по одному самому свежему на каждый уровень важности (критическое/предупреждение/инфо) —
+   карточки крупнее, чтобы миниатюра снимка была хорошо видна, а вся лента — короче (чтобы
+   карта площадки под ней помещалась без лишней прокрутки). */
+
+.sk-deviation-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sk-deviation-panel__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  margin: 0 0 var(--sk-space-2);
+  flex-shrink: 0;
+}
+
+.sk-deviation-panel__head h2 {
+  margin: 0;
+}
+
+.sk-deviation-panel__badge {
+  background: var(--sk-status-danger);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 12px;
+  padding: 1px 8px;
+}
+
+.sk-deviation-panel__all-link {
+  margin-left: auto;
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+  color: var(--sk-accent-strong);
+  text-decoration: none;
+}
+
+.sk-deviation-panel__all-link:hover {
+  text-decoration: underline;
+}
+
+.sk-deviation-list {
+  list-style: none;
+  margin: var(--sk-space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-3);
+  /* Ровно 3 крупные карточки свободно помещаются без скролла при текущем размере (~148px каждая);
+     max-height и overflow остаются как страховочная сетка на случай, если карточки окажутся выше. */
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.sk-deviation-item {
+  display: block;
+  border: 1px solid var(--sk-border);
+  border-left: 3px solid var(--sk-status-unknown);
+  background: var(--sk-surface-muted);
+  border-radius: 0 var(--sk-radius-control) var(--sk-radius-control) 0;
+  padding: var(--sk-space-3);
+  text-decoration: none;
+  color: inherit;
+  transition: background var(--sk-transition-fast), transform var(--sk-transition-fast);
+}
+
+.sk-deviation-item:hover {
+  background: var(--sk-glass-card-hover);
+  transform: translateX(2px);
+}
+
+/* Полупрозрачный цветной фон 'просвечивающийся' от края к центру по severity, а не только
+   цветная полоска слева. */
+.sk-deviation-item--critical {
+  border-left-color: var(--sk-status-danger);
+  background: linear-gradient(90deg, var(--sk-status-danger-bg), var(--sk-surface-muted) 70%);
+}
+
+.sk-deviation-item--warning {
+  border-left-color: var(--sk-status-warning);
+  background: linear-gradient(90deg, var(--sk-status-warning-bg), var(--sk-surface-muted) 70%);
+}
+
+.sk-deviation-item--info {
+  border-left-color: var(--sk-accent);
+  background: linear-gradient(90deg, var(--sk-accent-bg), var(--sk-surface-muted) 70%);
+}
+
+.sk-deviation-item__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sk-space-2);
+  margin-bottom: var(--sk-space-1);
+}
+
+.sk-deviation-item__severity {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--sk-text-muted);
+}
+
+.sk-deviation-item--critical .sk-deviation-item__severity {
+  color: var(--sk-status-danger);
+}
+.sk-deviation-item--warning .sk-deviation-item__severity {
+  color: var(--sk-status-warning);
+}
+.sk-deviation-item--info .sk-deviation-item__severity {
+  color: var(--sk-accent-strong);
+}
+
+.sk-deviation-item__time {
+  font-size: 11px;
+  color: var(--sk-text-faint);
+  flex-shrink: 0;
+}
+
+.sk-deviation-item__title {
+  font-weight: 600;
+  font-size: var(--sk-font-size-sm);
+  line-height: 1.3;
+}
+
+.sk-deviation-item__sub {
+  font-size: 12px;
+  color: var(--sk-text-faint);
+  margin-top: 2px;
+}
+
+.sk-deviation-item__bottom {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-2);
+  margin-top: var(--sk-space-2);
+  padding-top: var(--sk-space-2);
+  border-top: 1px solid var(--sk-border);
+}
+
+/* Снимок-доказательство отклонения — тот снимок, на котором оно впервые выявлено. Увеличен — карточек
+   теперь только три, места хватает на более крупную превью. */
+.sk-deviation-item__thumb {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--sk-border-strong);
+}
+
+.sk-deviation-item__equipment {
+  flex: 1;
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-deviation-item__chevron {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--sk-text-faint);
+  flex-shrink: 0;
+}
+
+.sk-deviation-panel__link {
+  display: inline-block;
+  margin-top: var(--sk-space-4);
+  color: var(--sk-accent-strong);
+  text-decoration: none;
+  font-size: var(--sk-font-size-sm);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.sk-deviation-panel__link:hover {
+  text-decoration: underline;
+}

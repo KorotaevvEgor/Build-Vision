@@ -1,0 +1,160 @@
+/* --- Верхний ряд: профиль + системные параметры --- */
+
+.sk-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--sk-space-4);
+  margin-top: var(--sk-space-4);
+}
+
+.sk-settings-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.sk-settings-card h2 {
+  margin: 0 0 var(--sk-space-2);
+  font-size: var(--sk-font-size-lg);
+}
+
+.sk-settings-card p {
+  margin: 0 0 4px;
+}
+
+.sk-settings-card__action {
+  align-self: flex-start;
+  margin-top: var(--sk-space-3);
+  text-decoration: none;
+}
+
+/* --- Чувствительность распознавания --- */
+
+.sk-settings-sensitivity {
+  margin-top: var(--sk-space-4);
+}
+
+.sk-settings-sensitivity > h2 {
+  margin: 0 0 var(--sk-space-2);
+}
+
+.sk-settings-sensitivity__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--sk-space-5);
+  margin-top: var(--sk-space-3);
+}
+
+.sk-setting {
+  min-width: 0;
+}
+
+.sk-setting__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sk-space-3);
+  margin-bottom: var(--sk-space-2);
+}
+
+.sk-setting__head label {
+  font-weight: 600;
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-setting__value {
+  font-size: var(--sk-font-size-base);
+  font-variant-numeric: tabular-nums;
+  color: var(--sk-accent-strong);
+}
+
+.sk-setting input[type="range"] {
+  width: 100%;
+  accent-color: var(--sk-accent);
+}
+
+.sk-setting select {
+  width: 100%;
+}
+
+.sk-setting__scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--sk-text-faint);
+  margin-top: var(--sk-space-1);
+}
+
+.sk-setting__hint {
+  margin-top: var(--sk-space-2);
+  font-size: 12px;
+  color: var(--sk-text-muted);
+  line-height: 1.5;
+}
+
+.sk-setting__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-3);
+  margin-top: var(--sk-space-4);
+  flex-wrap: wrap;
+}
+
+.sk-setting__saved {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-status-ok);
+  font-weight: 600;
+}
+
+.sk-setting__note {
+  font-size: 12px;
+  color: var(--sk-text-faint);
+}
+
+/* --- Опасная зона: удаление проекта --- */
+
+.sk-settings-danger {
+  margin-top: var(--sk-space-4);
+  border-color: var(--sk-status-danger);
+}
+
+.sk-settings-danger h2 {
+  margin: 0 0 var(--sk-space-2);
+  font-size: var(--sk-font-size-lg);
+  color: var(--sk-status-danger);
+}
+
+.sk-settings-danger__trigger,
+.sk-settings-danger__confirm-btn {
+  background: var(--sk-status-danger);
+  margin-top: var(--sk-space-3);
+}
+
+.sk-settings-danger__trigger:hover:not(:disabled),
+.sk-settings-danger__confirm-btn:hover:not(:disabled) {
+  background: var(--sk-status-danger);
+  filter: brightness(0.9);
+}
+
+.sk-settings-danger__confirm {
+  margin-top: var(--sk-space-2);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sk-space-2);
+  max-width: 420px;
+}
+
+.sk-settings-danger__confirm input[type="text"] {
+  width: 100%;
+  padding: var(--sk-space-2) var(--sk-space-3);
+  border: 1px solid var(--sk-border-strong);
+  border-radius: var(--sk-radius-control);
+  font-size: var(--sk-font-size-base);
+  background: var(--sk-surface);
+  color: var(--sk-text);
+}
+
+.sk-settings-danger__actions {
+  display: flex;
+  gap: var(--sk-space-3);
+}

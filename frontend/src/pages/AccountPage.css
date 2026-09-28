@@ -1,0 +1,198 @@
+.sk-account-page {
+  max-width: 720px;
+}
+
+.sk-account-section {
+  margin-top: var(--sk-space-4);
+}
+
+.sk-account-section h2 {
+  margin-top: 0;
+}
+
+/* ---------- Аватар ---------- */
+
+.sk-account-profile {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sk-space-5);
+  padding-bottom: var(--sk-space-5);
+  border-bottom: 1px solid var(--sk-border);
+}
+
+.sk-account-avatar {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--sk-accent-bg);
+  border: 2px dashed transparent;
+  transition: border-color var(--sk-transition-fast);
+}
+
+.sk-account-avatar--drag {
+  border-color: var(--sk-accent);
+}
+
+.sk-account-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sk-account-avatar__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--sk-accent-strong);
+}
+
+.sk-account-avatar__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  font-size: var(--sk-font-size-lg);
+}
+
+.sk-account-avatar__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sk-space-2);
+}
+
+.sk-account-avatar__actions .sk-button {
+  margin-right: var(--sk-space-2);
+}
+
+.sk-account-error {
+  color: var(--sk-status-danger);
+  font-size: var(--sk-font-size-sm);
+  margin: 0;
+}
+
+.sk-account-success {
+  color: var(--sk-status-ok);
+  font-size: var(--sk-font-size-sm);
+  margin: 0;
+}
+
+/* ---------- Информация о пользователе ---------- */
+
+.sk-account-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--sk-space-3) var(--sk-space-5);
+  margin: var(--sk-space-5) 0;
+}
+
+.sk-account-info div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sk-account-info dt {
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-faint);
+}
+
+.sk-account-info dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--sk-text);
+}
+
+.sk-account-position {
+  max-width: 420px;
+  margin-bottom: 0;
+}
+
+.sk-account-position__row {
+  display: flex;
+  gap: var(--sk-space-2);
+}
+
+.sk-account-position__row input {
+  flex: 1;
+}
+
+/* ---------- Оформление ---------- */
+
+.sk-account-theme {
+  display: flex;
+  gap: var(--sk-space-4);
+  margin-top: var(--sk-space-4);
+}
+
+.sk-account-theme__option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sk-space-2);
+  padding: var(--sk-space-3);
+  border: 2px solid var(--sk-border);
+  border-radius: var(--sk-radius-panel);
+  background: transparent;
+  color: var(--sk-text-muted);
+  font-weight: 600;
+  font-size: var(--sk-font-size-sm);
+  cursor: pointer;
+  transition: border-color var(--sk-transition-fast), color var(--sk-transition-fast);
+}
+
+.sk-account-theme__option:hover {
+  border-color: var(--sk-border-strong);
+}
+
+.sk-account-theme__option--active {
+  border-color: var(--sk-accent);
+  color: var(--sk-text);
+}
+
+.sk-account-theme__preview {
+  display: block;
+  width: 96px;
+  height: 60px;
+  border-radius: var(--sk-radius-control);
+  border: 1px solid var(--sk-border);
+}
+
+.sk-account-theme__preview--dark {
+  background: linear-gradient(160deg, #0a1020 0%, #121a2b 60%, #16203a 100%);
+}
+
+.sk-account-theme__preview--light {
+  background: linear-gradient(160deg, #ffffff 0%, #f3f5fb 60%, #eef1f8 100%);
+  border-color: #d8dee9;
+}
+
+/* ---------- Безопасность ---------- */
+
+.sk-account-password {
+  max-width: 360px;
+}
+
+.sk-account-danger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sk-space-4);
+  margin-top: var(--sk-space-5);
+  padding-top: var(--sk-space-4);
+  border-top: 1px solid var(--sk-border);
+}
+
+.sk-account-danger p {
+  margin: 2px 0 0;
+}

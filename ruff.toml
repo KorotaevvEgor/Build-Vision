@@ -1,0 +1,30 @@
+# Конфигурация ruff для всего репозитория.
+extend-exclude = [
+    "*/migrations/*",  # автогенерируется Django, не редактируется вручную
+    ".venv",
+]
+
+[lint]
+ignore = [
+    # RUF012: list_display/inlines/fields в Django ModelAdmin — идиоматичные
+    # списки/кортежи класса, а не случайный общий изменяемый default.
+    "RUF012",
+    # BLE001: в загрузчиках конфигурации (schedule.py, rules_config.py и т.д.)
+    # намеренно широкий except — любая ошибка чтения из БД должна давать
+    # понятный откат на файловую конфигурацию, а не падение сервиса.
+    "BLE001",
+]
+
+[lint.flake8-bugbear]
+# B008 по умолчанию считает любой вызов в значении по умолчанию подозрительным,
+# но Depends()/Form()/File()/Cookie()/Query() — идиоматичный способ внедрения зависимостей
+# FastAPI, рекомендованный самим FastAPI и явно документированный как безопасный в Ruff.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.params.Depends",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Cookie",
+    "fastapi.Query",
+    "fastapi.Header",
+]

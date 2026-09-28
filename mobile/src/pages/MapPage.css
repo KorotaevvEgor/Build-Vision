@@ -1,0 +1,6 @@
+.sk-mobile-map {
+  height: 60vh;
+  border-radius: var(--sk-radius-panel);
+  overflow: hidden;
+  border: 1px solid var(--sk-border);
+}

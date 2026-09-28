@@ -1,0 +1,47 @@
+# Погодные правила риска для запланированных работ.
+#
+# Это настраиваемые демонстрационные пороги, согласованные не с
+# нормативной документацией, а подобранные для прототипа. Перед
+# реальным использованием пороги нужно сверить с ментором и
+# технологическими картами (см. план, раздел «Погодные риски»).
+#
+# comparison: gte (>=) или lte (<=) относительно threshold.
+# factor должен быть одним из полей почасового прогноза Open-Meteo:
+# temperature_2m, precipitation, precipitation_probability,
+# wind_speed_10m, wind_gusts_10m.
+
+version: 1
+provider: open-meteo
+forecast_hours: 72
+cache_ttl_minutes: 45
+
+rules:
+  - stage_id: stage-kotlovan
+    factor: precipitation_probability
+    comparison: gte
+    threshold: 60
+    units: "%"
+    message: >
+      На период земляных работ («Устройство котлована») прогнозируется
+      вероятность осадков выше настроенного порога; требуется проверить
+      условия выполнения (устойчивость откосов, водоотведение).
+
+  - stage_id: stage-beton-podgotovka
+    factor: temperature_2m
+    comparison: lte
+    threshold: 5
+    units: "°C"
+    message: >
+      На период бетонных работ («Устройство бетонной подготовки»)
+      прогнозируется температура ниже настроенного порога; требуется
+      проверить условия твердения бетона и необходимость прогрева.
+
+  - stage_id: stage-uplotnenie-grunta
+    factor: precipitation_probability
+    comparison: gte
+    threshold: 60
+    units: "%"
+    message: >
+      На период уплотнения грунта прогнозируется вероятность осадков выше
+      настроенного порога; переувлажнённый грунт может не уплотняться до
+      требуемой плотности.

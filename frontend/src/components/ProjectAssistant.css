@@ -1,0 +1,291 @@
+/*
+  Плавающий ИИ-ассистент проекта: кнопка внизу справа поверх всего интерфейса
+  и стеклянная панель чата над ней. Использует те же токены "жидкого стекла",
+  что и карточки проектов (ProjectsPage.css) и сайдбар (AppShell.css).
+*/
+
+.sk-assistant-fab {
+  position: fixed;
+  right: var(--sk-space-5);
+  bottom: var(--sk-space-5);
+  z-index: 1000;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid var(--sk-glass-border);
+  background: linear-gradient(150deg, var(--sk-accent) 0%, var(--sk-accent-strong) 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.45), var(--sk-shadow-md);
+  transition: transform var(--sk-transition-fast), box-shadow var(--sk-transition-fast);
+  animation: sk-assistant-pulse 2.6s ease-in-out infinite;
+}
+
+.sk-assistant-fab:hover {
+  transform: translateY(-2px) scale(1.04);
+}
+
+.sk-assistant-fab--open {
+  animation: none;
+  background: var(--sk-surface-elevated);
+  color: var(--sk-text);
+}
+
+@keyframes sk-assistant-pulse {
+  0%,
+  100% {
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.45), 0 0 0 0 rgba(59, 130, 246, 0.35);
+  }
+  50% {
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.45), 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-assistant-fab {
+    animation: none;
+  }
+}
+
+.sk-assistant-panel {
+  position: fixed;
+  right: var(--sk-space-5);
+  bottom: calc(var(--sk-space-5) + 68px);
+  z-index: 1000;
+  width: min(380px, calc(100vw - 2 * var(--sk-space-5)));
+  height: min(560px, calc(100vh - 140px));
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--sk-radius-panel);
+  border: 1px solid var(--sk-glass-border);
+  background: var(--sk-glass-card);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  box-shadow: var(--sk-shadow-md), 0 0 0 1px rgba(59, 130, 246, 0.08);
+  overflow: hidden;
+  animation: sk-assistant-panel-in 180ms ease;
+}
+
+@keyframes sk-assistant-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.sk-assistant-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sk-space-3);
+  padding: var(--sk-space-4);
+  border-bottom: 1px solid var(--sk-glass-border);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.16), transparent 60%);
+}
+
+.sk-assistant-panel__title {
+  font-size: var(--sk-font-size-base);
+  font-weight: 600;
+  color: var(--sk-text);
+}
+
+.sk-assistant-panel__subtitle {
+  margin-top: 2px;
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-assistant-panel__close {
+  border: none;
+  background: transparent;
+  color: var(--sk-text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  padding: var(--sk-space-1);
+}
+
+.sk-assistant-panel__close:hover {
+  color: var(--sk-text);
+}
+
+.sk-assistant-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sk-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-3);
+}
+
+.sk-assistant-empty {
+  color: var(--sk-text-muted);
+  font-size: var(--sk-font-size-sm);
+  line-height: 1.5;
+}
+
+.sk-assistant-msg {
+  max-width: 86%;
+  padding: var(--sk-space-2) var(--sk-space-3);
+  border-radius: var(--sk-radius-control);
+  font-size: var(--sk-font-size-sm);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.sk-assistant-msg--user {
+  align-self: flex-end;
+  background: var(--sk-accent);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.sk-assistant-msg--assistant {
+  align-self: flex-start;
+  background: var(--sk-surface-muted);
+  color: var(--sk-text);
+  border: 1px solid var(--sk-glass-border);
+  border-bottom-left-radius: 4px;
+}
+
+.sk-assistant-msg--typing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--sk-space-3);
+}
+
+.sk-assistant-msg--typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sk-text-faint);
+  animation: sk-assistant-typing 1.1s ease-in-out infinite;
+}
+
+.sk-assistant-msg--typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.sk-assistant-msg--typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes sk-assistant-typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.sk-assistant-error {
+  align-self: flex-start;
+  color: var(--sk-status-danger);
+  background: var(--sk-status-danger-bg);
+  border-radius: var(--sk-radius-control);
+  padding: var(--sk-space-2) var(--sk-space-3);
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-assistant-panel__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sk-space-2);
+  padding: 0 var(--sk-space-4) var(--sk-space-3);
+}
+
+.sk-assistant-chip {
+  border: 1px solid var(--sk-glass-border);
+  background: var(--sk-surface-muted);
+  color: var(--sk-text-muted);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--sk-transition-fast), color var(--sk-transition-fast);
+}
+
+.sk-assistant-chip:hover:not(:disabled) {
+  background: var(--sk-accent-bg);
+  color: var(--sk-accent-strong);
+}
+
+.sk-assistant-chip:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.sk-assistant-panel__input {
+  display: flex;
+  gap: var(--sk-space-2);
+  padding: var(--sk-space-3) var(--sk-space-4) var(--sk-space-4);
+  border-top: 1px solid var(--sk-glass-border);
+}
+
+.sk-assistant-panel__input input {
+  flex: 1;
+  border: 1px solid var(--sk-border-strong);
+  background: var(--sk-surface);
+  color: var(--sk-text);
+  border-radius: var(--sk-radius-control);
+  padding: 10px 12px;
+  font-size: var(--sk-font-size-sm);
+  font-family: inherit;
+}
+
+.sk-assistant-panel__input input:focus {
+  outline: none;
+  border-color: var(--sk-accent);
+}
+
+.sk-assistant-panel__input button {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--sk-radius-control);
+  border: none;
+  background: var(--sk-accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity var(--sk-transition-fast);
+}
+
+.sk-assistant-panel__input button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (max-width: 520px) {
+  .sk-assistant-fab {
+    right: var(--sk-space-4);
+    bottom: var(--sk-space-4);
+  }
+
+  .sk-assistant-panel {
+    left: var(--sk-space-3);
+    right: var(--sk-space-3);
+    width: auto;
+    bottom: calc(var(--sk-space-4) + 68px);
+  }
+}
