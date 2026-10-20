@@ -46,10 +46,10 @@ RUN pip install --no-cache-dir torch==2.8.0 torchvision==0.23.0 \
 
 COPY backend/ backend/
 COPY manage.py manage.py
+COPY env_loader.py env_loader.py
 COPY admin_panel/ admin_panel/
 COPY core/ core/
 COPY data/config/ data/config/
-COPY data/raw/images/ data/raw/images/
 COPY scripts/ scripts/
 COPY models/ models/
 

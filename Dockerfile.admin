@@ -12,6 +12,7 @@ COPY admin_panel/requirements.txt admin_panel/requirements.txt
 RUN pip install --no-cache-dir -r admin_panel/requirements.txt
 
 COPY manage.py manage.py
+COPY env_loader.py env_loader.py
 COPY admin_panel/ admin_panel/
 COPY core/ core/
 COPY data/config/ data/config/

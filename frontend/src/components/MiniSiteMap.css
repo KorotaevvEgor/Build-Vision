@@ -30,3 +30,5 @@
   border: 2px solid #0b0f1a;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
 }
+
+.sk-mini-site-map__flat {position:absolute;inset:0;height:auto;min-height:0;overflow:hidden;}

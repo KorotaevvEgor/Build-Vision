@@ -61,9 +61,8 @@
   flex-direction: column;
   border-radius: var(--sk-radius-panel);
   border: 1px solid var(--sk-glass-border);
-  background: var(--sk-glass-card);
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
+  /* Непрозрачный фон: контент страницы под чатом не должен просвечивать. */
+  background: var(--sk-surface);
   box-shadow: var(--sk-shadow-md), 0 0 0 1px rgba(59, 130, 246, 0.08);
   overflow: hidden;
   animation: sk-assistant-panel-in 180ms ease;

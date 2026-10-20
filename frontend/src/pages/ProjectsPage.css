@@ -382,3 +382,27 @@
     animation: none;
   }
 }
+
+/* Matching content rows keep neighbouring cards aligned even when text wraps. */
+.sk-projects-grid { grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr)); align-items:stretch; }
+.sk-project-card { display:flex; flex-direction:column; min-width:0; height:100%; }
+.sk-project-card__media { flex-shrink:0; }
+.sk-project-card__body { display:grid; grid-template-rows:52px 42px 64px auto auto; gap:12px; padding:20px; flex:1; min-width:0; }
+.sk-project-card__body h2 { line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow-wrap:anywhere; }
+.sk-project-card__address { margin:0; font-size:13px; line-height:1.55; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow-wrap:anywhere; }
+.sk-project-card__stage { margin:0; min-width:0; }
+.sk-project-card__stage-top { align-items:flex-start; min-height:36px; }
+.sk-project-card__stage-name { white-space:normal; line-height:18px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.sk-project-card__stage-percent { line-height:18px; }
+.sk-project-card__stage--empty { color:var(--sk-text-muted); font-size:var(--sk-font-size-sm); line-height:18px; }
+.sk-project-card__stats { align-content:start; min-height:27px; }
+.sk-project-card__cta { margin:0; align-self:end; }
+
+.sk-project-card__stats { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.5fr); gap:12px; padding-top:14px; border-top:1px solid var(--sk-border); }
+.sk-project-card__stat { display:flex; flex-direction:column; align-items:flex-start; gap:5px; padding:0; border-radius:0; background:none; white-space:normal; }
+.sk-project-card__stat strong { font-size:21px; line-height:1.2; color:var(--sk-text); font-variant-numeric:tabular-nums; }
+.sk-project-card__stat>span { min-height:30px; font-size:11px; line-height:15px; font-weight:400; color:var(--sk-text-muted); }
+.sk-project-card__stat--danger { background:none; }
+.sk-project-card__stat--danger strong { color:var(--sk-status-danger); }
+
+.sk-projects-page a.sk-button,.sk-projects-page a.sk-button:hover{text-decoration:none}

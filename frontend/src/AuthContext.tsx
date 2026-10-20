@@ -5,6 +5,8 @@ import { ApiError, fetchMe, login as apiLogin, logout as apiLogout, type Current
 interface AuthContextValue {
   user: CurrentUser | null;
   loading: boolean;
+  bootError: string | null;
+  retrySession: () => void;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   /**
@@ -20,15 +22,24 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [bootError,setBootError]=useState<string|null>(null);
+  const [attempt,setAttempt]=useState(0);
 
   useEffect(() => {
     // При открытии/обновлении страницы пробуем восстановить сессию по cookie —
     // без этого пользователь бы разлогинивался при каждом F5.
+    let cancelled=false;
+    setLoading(true);setBootError(null);
     fetchMe()
-      .then(setUser)
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
-  }, []);
+      .then(data=>!cancelled&&setUser(data))
+      .catch((error:unknown) => {
+        if(cancelled)return;
+        if(error instanceof ApiError&&error.status===401)setUser(null);
+        else setBootError(error instanceof Error?error.message:"Не удалось проверить соединение");
+      })
+      .finally(() => !cancelled&&setLoading(false));
+    return ()=>{cancelled=true;};
+  }, [attempt]);
 
   const login = useCallback(async (username: string, password: string) => {
     const loggedInUser = await apiLogin(username, password);
@@ -48,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, updateUser: setUser }}>
+    <AuthContext.Provider value={{ user, loading, bootError, retrySession: () => setAttempt(a=>a+1), login, logout, updateUser: setUser }}>
       {children}
     </AuthContext.Provider>
   );

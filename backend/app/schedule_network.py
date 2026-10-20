@@ -1,17 +1,9 @@
-"""Сетевой график проекта: план, факт по фотоконтролю и сдвиг даты сдачи.
+"""Сетевой график: план и сценарий на основе подтверждённых физических объёмов.
 
-Здесь соединяются две вещи, которые по отдельности бесполезны. Расчёт
-критического пути (`critical_path.py`) знает про связи работ, но ничего не
-знает про стройку. История наблюдений знает, что происходило на площадке, но
-не знает, чем это грозит сроку сдачи. Модуль переводит второе в первое:
-оценивает отставание по каждой работе и прогоняет тот же расчёт повторно с
-этим отставанием на входе.
-
-Честность оценки важнее её точности, поэтому каждая работа получает не только
-число дней, но и состояние с формулировкой, откуда это число взялось.
-Отдельно выделено состояние «срок истёк, подтверждающих снимков нет»: это не
-отставание и не выполнение, это отсутствие контроля, и путать его с
-благополучием нельзя.
+Ответственный фиксирует долю выполненных работ, дату и основание замера.
+Ожидаемая дата имеет приоритет над сценарием сохранения среднего темпа.
+Ресурсные проверки техники не доказывают начало, завершение или длительность.
+Сдвиги дат передаются по связям с учётом резерва критического пути.
 """
 
 from __future__ import annotations
@@ -21,6 +13,7 @@ from datetime import date
 
 from . import critical_path, django_bridge
 from .schedule import Schedule, Stage
+from .progress_estimate import estimate_finish
 
 #: Состояния работы по фактическим данным фотоконтроля.
 NOT_STARTED = "not_started"
@@ -32,10 +25,10 @@ STARTED_EARLY = "started_early"
 
 STATE_LABELS = {
     NOT_STARTED: "Не начат",
-    IN_PROGRESS: "Идёт",
+    IN_PROGRESS: "Плановый период этапа",
     DONE_ON_TIME: "Завершён в срок",
     OVERDUE: "Просрочен",
-    UNVERIFIED: "Срок истёк, контроль не подтверждён",
+    UNVERIFIED: "Срок истёк, завершение не подтверждено",
     STARTED_EARLY: "Начат досрочно",
 }
 
@@ -45,7 +38,7 @@ AHEAD = "ahead"
 
 PROJECT_STATUS_LABELS = {
     BEHIND: "Отставание от графика",
-    ON_TRACK: "В графике",
+    ON_TRACK: "Сдвиг не определён по имеющимся данным",
     AHEAD: "Опережение графика",
 }
 
@@ -61,6 +54,8 @@ class StageProgress:
     reason: str = ""
     observation_count: int = 0
     compliance_percent: float | None = None
+    estimate_kind: str = "plan_reference_scenario"
+    completion_confirmed: bool = False
 
 
 @dataclass
@@ -116,55 +111,6 @@ def _confirmed_observations(stage: Stage, today: date, site=None) -> list:
     )
 
 
-def _required_class_keys(stage_id: str) -> set[str]:
-    if not django_bridge.ensure_django_ready():
-        return set()
-    from core.models import StageRequiredItem
-
-    return set(
-        StageRequiredItem.objects.filter(stage_rule__stage__external_id=stage_id).values_list(
-            "vocabulary_class__key", flat=True
-        )
-    )
-
-
-def _detected_early_start(stage: Stage, today: date, site=None) -> date | None:
-    """Дата, с которой работа фактически идёт, если она началась раньше плана.
-
-    Признак намеренно строгий: до плановой даты начала в зоне должен быть
-    подтверждённый снимок, на котором уверенно видна вся обязательная для этой
-    работы техника. Одной машины мало — она может оказаться там проездом.
-    Без такого признака опережение графика не объявляется вообще: подтвердить
-    досрочное выполнение по фотографиям иначе нельзя.
-    """
-    if today < stage.start_date or not django_bridge.ensure_django_ready():
-        return None
-
-    required = _required_class_keys(stage.stage_id)
-    if not required:
-        return None
-
-    from core.models import Observation
-
-    site_filter = {"zone__site": site} if site is not None else {"zone__site__is_legacy": True}
-    candidates = Observation.objects.filter(
-        zone__external_id=stage.zone_id,
-        observed_date__lt=stage.start_date,
-        date_confirmed=True,
-        **site_filter,
-    ).order_by("observed_date")
-
-    for observation in candidates:
-        present = {
-            d.class_key
-            for d in observation.detections.all()
-            if d.in_taxonomy and not d.ambiguous
-        }
-        if required.issubset(present):
-            return observation.observed_date
-    return None
-
-
 def _compliance(observations: list) -> float | None:
     if not observations:
         return None
@@ -172,12 +118,7 @@ def _compliance(observations: list) -> float | None:
 
 
 def estimate_progress(schedule: Schedule, today: date, site=None) -> dict[str, StageProgress]:
-    """Оценивает состояние каждой работы по подтверждённым наблюдениям.
-
-    Оценка темпа — та же эвристика, что в модуле прогноза: доля наблюдений без
-    отклонений. Это не измеренный физический прогресс, и так это и должно быть
-    описано пользователю.
-    """
+    """Разделяет плановый период, ресурсные проверки и подтверждённые объёмы."""
     progress: dict[str, StageProgress] = {}
     children = {stage.parent_id for stage in schedule.stages if stage.parent_id}
 
@@ -188,7 +129,6 @@ def estimate_progress(schedule: Schedule, today: date, site=None) -> dict[str, S
 
         observations = _confirmed_observations(stage, today, site=site)
         compliance = _compliance(observations)
-        planned_days = (stage.end_date - stage.start_date).days + 1
         item = StageProgress(
             stage_id=stage.stage_id,
             state=NOT_STARTED,
@@ -197,52 +137,31 @@ def estimate_progress(schedule: Schedule, today: date, site=None) -> dict[str, S
         )
 
         if today < stage.start_date:
-            early_start = _detected_early_start(stage, today, site=site)
-            if early_start is not None:
-                item.state = STARTED_EARLY
-                item.actual_start = early_start
-                item.reason = (
-                    f"Работа идёт с {early_start:%d.%m.%Y} — на снимке подтверждена вся "
-                    "обязательная техника этапа раньше планового начала."
-                )
-            else:
-                item.reason = "Этап ещё не начался по графику."
-        elif stage.start_date <= today <= stage.end_date:
+            item.reason = "Плановое начало ещё не наступило; наличие техники не подтверждает начало работ."
+        elif today <= stage.end_date:
             item.state = IN_PROGRESS
-            if compliance is None:
-                item.reason = "Этап идёт, подтверждённых снимков за период пока нет."
-            elif compliance > 0:
-                item.delay_days = max(0, round(planned_days * (1 / compliance - 1)))
-                item.reason = (
-                    f"По {len(observations)} подтверждённым снимкам доля проверок без отклонений "
-                    f"{compliance * 100:.0f}%."
-                )
-            else:
-                item.delay_days = planned_days
-                item.reason = (
-                    "Ни одна проверка за период этапа не прошла без отклонений — "
-                    "оценка отставания грубая, нужен выезд на площадку."
-                )
-        elif not observations:
-            item.state = UNVERIFIED
             item.reason = (
-                "Плановый срок истёк, но за период этапа нет ни одного снимка с подтверждённой "
-                "датой. Ход работ по этой работе камерами не проверен."
-            )
-        elif observations[-1].overall_status == "no_deviation":
-            item.state = DONE_ON_TIME
-            item.reason = (
-                f"Последняя проверка {observations[-1].observed_date:%d.%m.%Y} прошла без "
-                "отклонений в пределах планового срока."
+                "Идёт плановый период этапа. Физический прогресс и завершение не подтверждены. "
+                "Доля проверок без отклонений характеризует ресурсное соответствие и не переводится в дни задержки."
             )
         else:
-            item.state = OVERDUE
-            item.delay_days = (today - stage.end_date).days
+            item.state = UNVERIFIED
             item.reason = (
-                f"Плановый срок истёк {stage.end_date:%d.%m.%Y}, последняя проверка "
-                f"{observations[-1].observed_date:%d.%m.%Y} показала отклонение — работа "
-                "считается незавершённой."
+                f"Плановый срок истёк {stage.end_date:%d.%m.%Y}. Завершение и фактическое "
+                "отставание не подтверждены: снимки техники не измеряют выполненные объёмы. "
+                "Требуется подтверждение ответственного лица или измерение физических объёмов."
             )
+
+        finish, item.estimate_kind, item.completion_confirmed = estimate_finish(stage, today)
+        if item.estimate_kind != "plan_reference_scenario":
+            item.delay_days = (finish - stage.end_date).days
+            if item.completion_confirmed:
+                item.state = DONE_ON_TIME if finish <= stage.end_date else OVERDUE
+                item.reason = f"Завершение подтверждено ответственным лицом {finish:%d.%m.%Y}: {stage.verified_progress_note}"
+            else:
+                item.state = (OVERDUE if stage.verified_progress_date > stage.end_date else UNVERIFIED) if today > stage.end_date else IN_PROGRESS
+                basis = "Оценка ответственного лица" if item.estimate_kind == "responsible_person_estimate" else "Сценарий сохранения среднего темпа физических работ с планового начала"
+                item.reason = f"{basis}: окончание {finish:%d.%m.%Y}. Замер {stage.verified_progress_date:%d.%m.%Y}, готовность {stage.verified_progress_percent}%. Основание: {stage.verified_progress_note}. Это оценка, требуется актуализация при изменении условий."
 
         progress[stage.stage_id] = item
 
@@ -333,8 +252,14 @@ def build_report(schedule: Schedule, today: date, site=None) -> NetworkReport:
                 "total_float_days": base.total_float_days,
                 "is_critical": base.is_critical,
                 "projected_finish_date": fact.early_finish.isoformat(),
+                "estimate_kind": item.estimate_kind if item else "summary",
+                "physical_progress_percent": stage.verified_progress_percent,
+                "verified_progress_date": stage.verified_progress_date.isoformat() if stage.verified_progress_date else None,
+                "verified_progress_note": stage.verified_progress_note,
+                "completion_confirmed": item.completion_confirmed if item else False,
+                "completion_basis": "responsible_person_record" if item and item.completion_confirmed else "not_recorded",
                 "state": item.state if item else "",
-                "state_label_ru": STATE_LABELS.get(item.state, "") if item else "",
+                "state_label_ru": ("Завершён с опозданием" if item.completion_confirmed and item.state == OVERDUE else STATE_LABELS.get(item.state, "")) if item else "",
                 "delay_days": item.delay_days if item else 0,
                 "observation_count": item.observation_count if item else 0,
                 "compliance_percent": item.compliance_percent if item else None,
@@ -363,6 +288,9 @@ def build_report(schedule: Schedule, today: date, site=None) -> NetworkReport:
 
 def to_dict(report: NetworkReport) -> dict:
     return {
+        "estimate_kind": "physical_progress_scenario" if any(s.get("estimate_kind") not in ("plan_reference_scenario", "summary") for s in report.stages) else "plan_reference_scenario",
+        "uncertainty": "scenario_requires_updates",
+        "estimate_basis": "Датированные замеры физических объёмов и ожидаемые даты ответственного; при отсутствии замеров — календарный план. Сдвиги распространяются по технологическим связям с учётом резерва.",
         "available": report.available,
         "reason": report.reason,
         "cycle": report.cycle,
@@ -372,7 +300,7 @@ def to_dict(report: NetworkReport) -> dict:
         ),
         "shift_days": report.shift_days,
         "status": report.status,
-        "status_label_ru": PROJECT_STATUS_LABELS.get(report.status, ""),
+        "status_label_ru": ("Сценарий без сдвига" if report.status == ON_TRACK and any(s.get("estimate_kind") not in ("plan_reference_scenario", "summary") for s in report.stages) else PROJECT_STATUS_LABELS.get(report.status, "")),
         "stages": report.stages,
         "critical_stage_ids": report.critical_stage_ids,
         "unverified_stage_ids": report.unverified_stage_ids,

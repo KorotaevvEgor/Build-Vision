@@ -1,12 +1,14 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { ApiError } from "../api";
 import "./LoginPage.css";
+import { RegistrationForm } from "../components/RegistrationForm";
 
 export function LoginPage() {
   const { user, login } = useAuth();
+  const [mode,setMode] = useState<"login"|"register">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -29,7 +31,7 @@ export function LoginPage() {
     setLoading(true);
     setHoldRedirect(true);
     try {
-      await login(username, password);
+      await login(username.trim(), password);
       setSuccess(true);
       window.setTimeout(() => setHoldRedirect(false), 850);
     } catch (err) {
@@ -61,8 +63,12 @@ export function LoginPage() {
           </div>
         </aside>
 
-        <div className="sk-login__panel">
-          <form className="sk-login__form" onSubmit={onSubmit}>
+        <div className="sk-login__panel"><div className="sk-login__content">
+          <div className="sk-login__tabs" role="tablist" aria-label="Вход и регистрация">
+            <button type="button" role="tab" aria-selected={mode==="login"} onClick={()=>{setMode("login");setError(null);}}>Вход</button>
+            <button type="button" role="tab" aria-selected={mode==="register"} onClick={()=>{setMode("register");setError(null);}}>Регистрация</button>
+          </div>
+          {mode === "register" ? <RegistrationForm onLogin={()=>setMode("login")} /> : <form className="sk-login__form" onSubmit={onSubmit}>
             <div className="sk-login__header">
               <span className="sk-login__eyebrow">BuildVision</span>
               <h1 className="sk-login__title">Авторизация</h1>
@@ -73,6 +79,7 @@ export function LoginPage() {
               <label htmlFor="username">Логин</label>
               <input
                 id="username"
+                maxLength={150}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
@@ -132,9 +139,9 @@ export function LoginPage() {
               {loading && !success && <span className="sk-login__spinner" aria-hidden="true" />}
             </button>
 
-            <p className="sk-login__footer">Доступ выдаёт администратор проекта</p>
-          </form>
-        </div>
+          </form>}
+          <Link className="sk-login__docs" to="/documentation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6a3 3 0 0 1 2 1 3 3 0 0 1 2-1h6v15h-6a3 3 0 0 0-2 1 3 3 0 0 0-2-1H4V4Zm8 1v15"/></svg><span>Документация по проекту</span><span aria-hidden="true">↗</span></Link>
+        </div></div>
       </div>
     </div>
   );

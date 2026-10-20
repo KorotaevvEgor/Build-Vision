@@ -30,6 +30,10 @@ class Stage:
     parent_id: str | None = None
     #: Связи «окончание-начало» — основа расчёта критического пути.
     predecessor_ids: tuple[str, ...] = ()
+    verified_progress_percent: float | None = None
+    verified_progress_date: date | None = None
+    verified_progress_note: str = ""
+    expected_finish_date: date | None = None
 
     def is_active_on(self, day: date) -> bool:
         return self.start_date <= day <= self.end_date
@@ -108,6 +112,10 @@ def _load_schedule_from_db(site=None) -> Schedule:
             end_date=row.end_date,
             technology_assumption=row.technology_assumption,
             is_demo=row.is_demo,
+            verified_progress_percent=row.verified_progress_percent,
+            verified_progress_date=row.verified_progress_date,
+            verified_progress_note=row.verified_progress_note,
+            expected_finish_date=row.expected_finish_date,
             parent_id=row.parent.external_id if row.parent else None,
             predecessor_ids=tuple(
                 sorted(item.external_id for item in row.predecessors.all())

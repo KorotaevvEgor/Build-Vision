@@ -68,3 +68,18 @@
   color: var(--sk-text-muted);
   margin-bottom: 0;
 }
+
+.sk-weather-risk-item__impact {
+  display: inline-block;
+  margin: var(--sk-space-3) 0 0;
+  padding: var(--sk-space-1) var(--sk-space-3);
+  border-radius: 999px;
+  background: var(--sk-status-warning-bg);
+  border: 1px solid var(--sk-status-warning);
+  color: var(--sk-status-warning);
+  font-size: var(--sk-font-size-sm);
+}
+
+.sk-weather-risk-item--demo {
+  border-style: dashed;
+}

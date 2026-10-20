@@ -546,3 +546,32 @@
     animation: none;
   }
 }
+
+.sk-login__content {width:100%;max-width:360px;}
+.sk-login__tabs {display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border:1px solid var(--sk-border);border-radius:10px;background:var(--sk-surface-muted);margin-bottom:26px;}
+.sk-login__tabs button {border:0;background:transparent;color:var(--sk-text-muted);font:inherit;font-size:13px;padding:10px;border-radius:7px;cursor:pointer;}
+.sk-login__tabs button[aria-selected="true"] {background:var(--sk-surface-elevated);color:var(--sk-text);box-shadow:var(--sk-shadow-sm);}
+.sk-registration .sk-login__header {margin-bottom:18px;padding-bottom:18px;}
+.sk-registration .sk-login__field {margin-bottom:13px;}
+.sk-registration-field-error {display:block;color:var(--sk-status-danger);font-size:11px;line-height:1.5;margin:6px 0 0;}
+.sk-registration input[aria-invalid="true"] {border-color:var(--sk-status-danger);}
+.sk-registration-show {display:flex;align-items:center;gap:8px;font-size:12px;color:var(--sk-text-muted);margin:8px 0 18px;cursor:pointer;}
+.sk-registration-show input {accent-color:var(--sk-accent);}
+.sk-registration-result {display:flex;flex-direction:column;gap:15px;color:var(--sk-text);}
+.sk-registration-result__icon {width:56px;height:56px;display:grid;place-items:center;border-radius:14px;background:var(--sk-status-ok-bg);color:var(--sk-status-ok);}
+.sk-registration-result h1 {margin:0;font-size:27px;line-height:1.25;}
+.sk-registration-result p {margin:0;font-size:13px;line-height:1.6;}
+.sk-registration-result__email {font-size:14px;overflow-wrap:anywhere;}
+.sk-registration-result__muted {color:var(--sk-text-muted);}
+.sk-registration-back {border:0;background:none;color:var(--sk-accent-strong);cursor:pointer;font:inherit;font-size:12px;padding:4px;}
+.sk-login__tabs button:focus-visible,.sk-registration-back:focus-visible {outline:2px solid var(--sk-accent);outline-offset:2px;}
+:root[data-theme="light"] .sk-login {background:var(--sk-bg);}
+:root[data-theme="light"] .sk-login__panel {background:var(--sk-surface);}
+:root[data-theme="light"] .sk-login__title {background:none;color:var(--sk-text);}
+:root[data-theme="light"] .sk-login__field input {color:var(--sk-text);background:var(--sk-surface-muted);border-color:var(--sk-border);}
+:root[data-theme="light"] .sk-login__field label {color:var(--sk-text);}
+@media(max-width:560px) {.sk-login {padding:16px;}.sk-login__panel {padding:24px 20px;}.sk-login__cover {min-height:140px;}}
+
+/* Clip decoration without creating a hidden scroll container around form fields. */
+.sk-login {overflow:clip;}
+.sk-login__docs{display:flex;align-items:center;justify-content:center;gap:12px;min-height:54px;margin-top:24px;padding:14px 18px;border:1px solid #4278e7;border-radius:12px;background:color-mix(in srgb,var(--sk-surface) 90%,#2868ed);color:var(--sk-text);font-size:14px;font-weight:650;line-height:1.45;text-decoration:none!important;box-shadow:0 4px 16px #245eed10;transition:background .18s,border-color .18s,box-shadow .18s}.sk-login__docs svg{width:22px;height:22px;flex-shrink:0;fill:none;stroke:#4e82eb;stroke-width:1.6;stroke-linejoin:round}.sk-login__docs>span:last-child{margin-left:auto;color:#4e82eb;font-size:18px}.sk-login__docs:hover{border-color:#245eed;background:color-mix(in srgb,var(--sk-surface) 83%,#2868ed);box-shadow:0 6px 20px #245eed20}.sk-login__docs:focus-visible{outline:3px solid #5289ee;outline-offset:3px}@media(max-width:400px){.sk-login__docs{font-size:12px;padding:12px;gap:9px;}}

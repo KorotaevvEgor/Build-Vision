@@ -30,16 +30,16 @@ function FitBounds({ bounds }: { bounds: L.LatLngBounds | null }) {
 
   useEffect(() => {
     if (bounds && bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [18, 18] });
+      map.fitBounds(bounds, { padding: [16, 16], animate: false, maxZoom: 19 });
     }
   }, [map, bounds]);
 
   useEffect(() => {
     const container = map.getContainer();
     const observer = new ResizeObserver(() => {
-      map.invalidateSize();
+      map.invalidateSize({ pan: false, animate: false });
       if (bounds && bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [18, 18] });
+        map.fitBounds(bounds, { padding: [16, 16], animate: false, maxZoom: 19 });
       }
     });
     observer.observe(container);
@@ -60,8 +60,7 @@ interface MiniSiteMapProps {
 /**
  * Уменьшенная некликабельная копия карты площадки для карточки на главной —
  * только просмотр, без выбора зон и переключения слоёв (это есть на /map).
- * Наклон через CSS-transform — декоративный эффект по просьбе заказчика,
- * убирается при наведении, чтобы можно было спокойно рассмотреть карту.
+ * Масштаб строится по рабочим зонам и камерам, без внешнего контура площадки.
  */
 export function MiniSiteMap({ features, zoneStatus, center }: MiniSiteMapProps) {
   if (!center) {
@@ -70,14 +69,14 @@ export function MiniSiteMap({ features, zoneStatus, center }: MiniSiteMapProps) 
 
   const polygonFeatures: FeatureCollection = {
     type: "FeatureCollection",
-    features: features.filter((f) => f.properties?.kind !== "camera"),
+    features: features.filter((f) => f.properties?.kind === "zone"),
   };
   const cameraFeatures = features.filter((f) => f.properties?.kind === "camera");
 
   let bounds: L.LatLngBounds | null = null;
-  if (polygonFeatures.features.length > 0) {
+  if (polygonFeatures.features.length > 0 || cameraFeatures.length > 0) {
     try {
-      const computed = L.geoJSON(polygonFeatures as GeoJSON.GeoJsonObject).getBounds();
+      const computed = L.geoJSON({ type: "FeatureCollection", features: [...polygonFeatures.features, ...cameraFeatures] } as GeoJSON.GeoJsonObject).getBounds();
       if (computed.isValid()) bounds = computed;
     } catch {
       bounds = null;
@@ -89,7 +88,7 @@ export function MiniSiteMap({ features, zoneStatus, center }: MiniSiteMapProps) 
       <div className="sk-mini-site-map__flat">
         <MapContainer
           center={center}
-          zoom={17}
+          zoom={18}
           zoomControl={false}
           dragging={false}
           scrollWheelZoom={false}

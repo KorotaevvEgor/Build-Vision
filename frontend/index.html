@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo.png" />
@@ -18,9 +18,9 @@
       // пока React и ThemeProvider не загрузятся.
       try {
         var theme = localStorage.getItem("sk-theme");
-        document.documentElement.dataset.theme = theme === "light" ? "light" : "dark";
+        document.documentElement.dataset.theme = theme === "dark" ? "dark" : "light";
       } catch (e) {
-        document.documentElement.dataset.theme = "dark";
+        document.documentElement.dataset.theme = "light";
       }
     </script>
   </head>

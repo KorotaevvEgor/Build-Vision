@@ -386,7 +386,7 @@ export function MapPage() {
   const polygonFeatures = useMemo<FeatureCollection>(
     () => ({
       type: "FeatureCollection",
-      features: (site?.geojson.features ?? []).filter((f) => f.properties?.kind !== "camera"),
+      features: (site?.geojson.features ?? []).filter((f) => f.properties?.kind === "zone"),
     }),
     [site],
   );
@@ -398,13 +398,6 @@ export function MapPage() {
   // Карта пересоздаётся/позиционируется по геометрии выбранного проекта (см. план,
   // «Состояние клиентов и карты») — без жёстко зашитой московской демоплощадки.
   const boundaryFeature = site?.geojson.features.find((f) => f.properties?.kind === "site_boundary");
-  const boundaryLatLngs = useMemo(
-    () =>
-      boundaryFeature && boundaryFeature.geometry.type === "Polygon"
-        ? polygonToLatLngs(boundaryFeature.geometry)
-        : null,
-    [boundaryFeature],
-  );
   const mapCenter = useMemo<[number, number] | null>(() => {
     if (boundaryFeature && boundaryFeature.geometry.type === "Polygon") {
       const ring = boundaryFeature.geometry.coordinates[0];
@@ -497,14 +490,6 @@ export function MapPage() {
             {editMode ? (
               <>
                 <EditClickHandler active={drawing} onClick={handleEditMapClick} />
-
-                {boundaryLatLngs && boundaryLatLngs.length >= 3 && (
-                  <Polygon
-                    positions={boundaryLatLngs}
-                    pathOptions={{ color: NO_DATA_COLOR, weight: 1, dashArray: "6 4", fillOpacity: 0.02 }}
-                    interactive={false}
-                  />
-                )}
 
                 {(zones ?? [])
                   .filter((z) => z.zone_id !== drawingZoneId)
@@ -959,25 +944,7 @@ export function MapPage() {
         )}
       </div>
 
-      {!editMode && (
-        <div className="sk-panel" style={{ marginTop: "var(--sk-space-5)" }}>
-          <h2>Легенда</h2>
-          <ul className="sk-map-legend">
-            <li>
-              <span style={{ background: STATUS_COLOR.no_deviation }} /> Отклонений не выявлено
-            </li>
-            <li>
-              <span style={{ background: STATUS_COLOR.possible_deviation }} /> Возможное отклонение
-            </li>
-            <li>
-              <span style={{ background: STATUS_COLOR.insufficient_data }} /> Недостаточно данных
-            </li>
-            <li>
-              <span style={{ background: NO_DATA_COLOR }} /> Ещё нет снимков
-            </li>
-          </ul>
-        </div>
-      )}
+
     </div>
   );
 }

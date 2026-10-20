@@ -40,11 +40,20 @@ services:
       SK_SESSION_COOKIE_SECURE: ${SK_SESSION_COOKIE_SECURE:-false}
       # Общий cookie для основного домена и его поддомена admin — Администратор входит один раз.
       SK_SESSION_COOKIE_DOMAIN: ${SK_SESSION_COOKIE_DOMAIN:-}
+      # Разрешённые origin для CORS и защиты от межсайтовых запросов (см. backend/app/security.py) —
+      # в проде обязательно укажите свой домен(ы) через SK_CORS_ORIGINS в .env.
+      SK_CORS_ORIGINS: ${SK_CORS_ORIGINS:-http://localhost:5173,https://localhost}
+      # LLM (AITunnel) — без ключа заключение/ИИ-ассистент не формируются.
+      AITUNNEL_BASE_URL: ${AITUNNEL_BASE_URL:-}
+      AITUNNEL_FALLBACK_BASE_URL: ${AITUNNEL_FALLBACK_BASE_URL:-}
+      AITUNNEL_API_KEY: ${AITUNNEL_API_KEY:-}
+      AITUNNEL_TEXT_MODEL: ${AITUNNEL_TEXT_MODEL:-}
+      AITUNNEL_VISION_MODEL: ${AITUNNEL_VISION_MODEL:-}
     volumes:
       # Загруженные снимки переживают пересборку/перезапуск контейнера — том
       # смонтирован снаружи (см. план, раздел «Размещение на арендованной VPS»).
       - ./data/uploads:/app/data/uploads
-      # Артефакты классификатора-корректора (модуль AI Learning) пишутся в
+      # Артефакты классификатора-корректора (модуль Learning) пишутся в
       # /app/models во время работы контейнера — без этого монтирования они бы терялись
       # при каждом перезапуске/пересборке образа.
       - ./models:/app/models
@@ -86,6 +95,8 @@ services:
       SK_PARTICIPANT_PASSWORD: ${SK_PARTICIPANT_PASSWORD:-}
       SK_SESSION_COOKIE_SECURE: ${SK_SESSION_COOKIE_SECURE:-false}
       SK_SESSION_COOKIE_DOMAIN: ${SK_SESSION_COOKIE_DOMAIN:-}
+      # CSRF для форм Django admin — в проде укажите свой домен(ы) через DJANGO_CSRF_TRUSTED_ORIGINS в .env.
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-http://localhost:5173}
     volumes:
       - ./data/admin_static:/app/staticfiles
     depends_on:

@@ -2,17 +2,19 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchCameras, getObservationImageUrl, type CameraSummary } from "../api";
 import { useProject } from "../ProjectContext";
+import {CameraZonesCard} from "../components/CameraZonesCard";
 import { StatusBadge } from "../components/StatusBadge";
 import "./CamerasPage.css";
 
 export function CamerasPage() {
   const { projectId } = useProject();
   const [cameras, setCameras] = useState<CameraSummary[] | null>(null);
+  const [selectedId,setSelectedId]=useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setCameras(null);
+    setCameras(null);setSelectedId("");
     setError(null);
     fetchCameras(projectId)
       .then((data) => {
@@ -33,6 +35,7 @@ export function CamerasPage() {
     return <div className="sk-panel">Загрузка камер…</div>;
   }
 
+  const selectedCamera=cameras.find(c=>c.camera_id===selectedId)??cameras[0];
   const onlineCount = cameras.filter((c) => c.stream_url).length;
   const offlineCount = cameras.length - onlineCount;
 
@@ -65,11 +68,11 @@ export function CamerasPage() {
 
       {cameras.length === 0 && <p className="sk-empty-state">Камеры ещё не заведены.</p>}
 
-      <div className="sk-cameras-grid">
+      <div className="sk-cameras-workspace"><section className="sk-cameras-workspace__list sk-cameras-list-card" aria-label="Камеры проекта"><header><h2>Камеры</h2><p>Снимки и история наблюдений по каждой камере</p></header><div className="sk-cameras-grid">
         {cameras.map((camera) => {
           const online = Boolean(camera.stream_url);
           return (
-            <Link key={camera.camera_id} to={`/projects/${projectId}/cameras/${camera.camera_id}`} className="sk-camera-tile">
+            <article key={camera.camera_id} className="sk-camera-tile"><Link className="sk-camera-tile__select" aria-label={`Открыть камеру: ${camera.name}`} to={`/projects/${projectId}/cameras/${camera.camera_id}`}>
               <div className="sk-camera-tile__media">
                 {camera.latest_observation ? (
                   <img
@@ -98,19 +101,17 @@ export function CamerasPage() {
                   <div className="sk-camera-tile__zone">{camera.zone_name}</div>
                 </div>
               </div>
-              <div className="sk-camera-tile__footer">
-                {camera.latest_observation ? (
-                  <span className="sk-camera-tile__time">
-                    {new Date(camera.latest_observation.created_at).toLocaleString("ru-RU")}
-                  </span>
-                ) : (
-                  <span className="sk-empty-state">Ещё не анализировалась</span>
-                )}
-              </div>
-            </Link>
+              </Link>
+              <div className="sk-zones-card__body sk-camera-tile__details"><ul>
+                <li><span>Сохранено кадров</span><strong className="sk-camera-frame-count">{camera.observation_count ?? '—'}</strong></li>
+                <li><span>Последний снимок</span><small>{camera.latest_observation ? new Date(camera.latest_observation.created_at).toLocaleString("ru-RU") : 'Снимков пока нет'}</small></li>
+                <li><span>Получение кадров</span><small>{online ? 'Видеотрансляция' : 'По расписанию'}</small></li>
+              </ul></div>
+              <div className="sk-camera-tile__footer"><p>Снимки и история наблюдений выбранной камеры.</p><Link className="sk-button" to={`/projects/${projectId}/cameras/${camera.camera_id}`}>Открыть камеру →</Link></div>
+            </article>
           );
         })}
-      </div>
+      </div></section><aside className="sk-cameras-workspace__zones" aria-label="Зоны выбранной камеры">{selectedCamera?<><div className="sk-zones-camera-select">{cameras.length>1&&<label>Камера для разметки<select value={selectedCamera.camera_id} onChange={e=>setSelectedId(e.target.value)}>{cameras.map(c=><option key={c.camera_id} value={c.camera_id}>{c.name}</option>)}</select></label>}</div><CameraZonesCard key={`${projectId}-${selectedCamera.camera_id}`} cameraId={selectedCamera.camera_id}/></>:<div className="sk-panel"><h2>Зоны на кадре</h2><p className="sk-empty-state">Добавьте камеру, чтобы настроить зоны наблюдения.</p></div>}</aside></div>
     </div>
   );
 }

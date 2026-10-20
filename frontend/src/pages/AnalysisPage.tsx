@@ -1,9 +1,11 @@
+import {EvidenceExplanation} from "../components/EvidenceExplanation";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   createCorrection,
   createObservation,
   fetchCameras,
+  fetchObservation,
   fetchSite,
   fetchVocabulary,
   type CameraSummary,
@@ -28,8 +30,8 @@ const CONFIDENCE_LABELS: Record<string, string> = {
 
 /** «Неопределённо» — равноправный ответ: без зон и истории кадров судить о работе нельзя. */
 const ACTIVITY_LABELS: Record<DetectionActivity, string> = {
-  working: "работает",
-  idle: "простаивает",
+  working: "признаки работы",
+  idle: "возможный простой",
   unknown: "неопределённо",
 };
 
@@ -64,6 +66,7 @@ export function AnalysisPage() {
   const [cameras, setCameras] = useState<CameraSummary[]>([]);
   const [cameraId, setCameraId] = useState<string>("");
   const [observedDate, setObservedDate] = useState<string>("");
+  const [observedTime,setObservedTime] = useState("");
   const [dateConfirmed, setDateConfirmed] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -136,6 +139,7 @@ export function AnalysisPage() {
         zoneId,
         observedDate: observedDate || undefined,
         dateConfirmed,
+        capturedAt: observedDate&&observedTime&&dateConfirmed?`${observedDate}T${observedTime}:00Z`:undefined,
         cameraId: cameraId || undefined,
         image: file,
       });
@@ -192,6 +196,7 @@ export function AnalysisPage() {
 
   // Блок ИИ может отсутствовать целиком (старый ответ или отключённая модель) —
   // интерфейс в этом случае просто не показывает соответствующие карточки.
+  useEffect(()=>{if(!result||result.ai?.status!=="pending")return;let cancelled=false;let timer:ReturnType<typeof setTimeout>;const id=result.observation_id;let attempts=0;const poll=async()=>{try{const fresh=await fetchObservation(projectId,id);if(cancelled)return;setResult(prev=>prev?.observation_id===id?{...prev,ai:fresh.ai,analysis_status:fresh.analysis_status}:prev);if(fresh.analysis_status==="pending"&&++attempts<60)timer=setTimeout(poll,4000);}catch{if(!cancelled&&++attempts<60)timer=setTimeout(poll,6000);}};timer=setTimeout(poll,3000);return()=>{cancelled=true;clearTimeout(timer);};},[projectId,result?.observation_id,result?.ai?.status]);
   const vision = result?.ai?.vision ?? null;
   const mismatch = result?.ai?.stage_mismatch ?? null;
   const conclusion = result?.ai?.conclusion ?? null;
@@ -262,6 +267,7 @@ export function AnalysisPage() {
             />
           </div>
 
+          <div className="sk-field"><label htmlFor="capture-time">Время съёмки UTC (необязательно)</label><input id="capture-time" type="time" value={observedTime} onChange={e=>setObservedTime(e.target.value)}/><small>Для независимой серии необходимо точное время. Дата без времени позволяет проверить один кадр.</small></div>
           <label className="sk-checkbox">
             <input
               type="checkbox"
@@ -341,7 +347,7 @@ export function AnalysisPage() {
           {result && (
             <>
               <div className="sk-panel">
-                <h2>Результат анализа</h2>
+                <h2>Результат анализа</h2>{result.ai?.status==="pending"&&<p className="sk-table__muted" role="status">Основная проверка готова. Дополнительное заключение формируется в фоне.</p>}
                 <p className="sk-table__muted">Обнаружено объектов: {detectedGroups.reduce((s, g) => s + g.count, 0)}</p>
                 <table className="sk-table">
                   <thead>
@@ -530,7 +536,7 @@ export function AnalysisPage() {
                         <tr>
                           <th>Техника</th>
                           <th>План</th>
-                          <th>Факт</th>
+                          <th>Засчитано работе</th><th>Видно / не учтено</th>
                           <th></th>
                         </tr>
                       </thead>
@@ -542,14 +548,15 @@ export function AnalysisPage() {
                               {c.label_ru}
                             </td>
                             <td>{c.required_qty}</td>
-                            <td>{c.actual_qty}</td>
-                            <td>{c.satisfied ? "✅" : "⚠"}</td>
+                            <td>{c.actual_qty}</td><td>{c.observed_qty??"—"} / {c.excluded_qty??"—"}</td>
+                            <td>{stage.status==="insufficient_data"?"Проверить":c.satisfied?"Достаточно":"Расхождение"}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   )}
 
+                  <EvidenceExplanation methodology={stage.methodology}/>
                   <p className="sk-stage-card__meta">
                     Требуется: {stage.required.join(", ") || "—"} · Допустимо:{" "}
                     {stage.allowed.join(", ") || "—"}

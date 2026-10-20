@@ -16,8 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
 from . import (
@@ -39,7 +38,9 @@ from . import deviations as deviations_module
 from . import forecast as forecast_module
 from .app_context import get_context
 from .detector import get_detector
+from .analysis_context import detector_context
 from .matching import evaluate_observation
+from .image_delivery import image_response
 from .project_scope import get_project_site
 from .weather import (
     fetch_current_weather,
@@ -92,13 +93,10 @@ def _project_summary(site, current_user: auth.CurrentUser) -> dict:
         .first()
     )
     current_stage_progress_percent = None
-    if current_stage is not None:
-        total_days = (current_stage.end_date - current_stage.start_date).days + 1
-        if total_days > 0:
-            elapsed_days = (min(today, current_stage.end_date) - current_stage.start_date).days + 1
-            current_stage_progress_percent = round(
-                max(0.0, min(1.0, elapsed_days / total_days)) * 100, 1
-            )
+    if (current_stage is not None and current_stage.verified_progress_percent is not None
+        and current_stage.verified_progress_date is not None and current_stage.verified_progress_date<=today
+        and current_stage.verified_progress_note.strip()):
+        current_stage_progress_percent=current_stage.verified_progress_percent
 
     # Первая камера с хотя бы одним наблюдением — только для превью на карточке, без лишних
     # запросов к детекциям/эвалюациям.
@@ -653,6 +651,8 @@ def _quantity_check_to_dict(check) -> dict:
         "required_qty": check.required_qty,
         "actual_qty": check.actual_qty,
         "satisfied": check.satisfied,
+        "observed_qty": check.observed_qty,
+        "excluded_qty": check.excluded_qty,
     }
 
 
@@ -1023,6 +1023,9 @@ def get_project_notifications(limit: int = 20, site=Depends(get_project_site)) -
 
 @router.get("/projects/{project_id}/forecast")
 def get_project_forecast(zone_id: str | None = None, site=Depends(get_project_site)) -> dict:
+    if site.status == "paused":
+        return {"available": False, "reason": "Проект приостановлен. Срок возобновления и сдачи не определён.",
+                "project_status": "paused", "deadline_status": "Приостановлено"}
     ctx = get_context(site=site)
     today = datetime.now(UTC).date()
     stages = ctx.schedule.stages
@@ -1058,10 +1061,43 @@ def get_project_deviations(
     return deviations_module.list_deviations(site=site, status=status, limit=min(limit, 300))
 
 
+@router.get("/projects/{project_id}/deviations/{deviation_id}")
+def get_project_deviation(deviation_id: int, site=Depends(get_project_site)) -> dict:
+    result = deviations_module.get_deviation(deviation_id=deviation_id, site=site)
+    if result is None:
+        raise HTTPException(404, "Отклонение не найдено в этом проекте")
+    return result
+
+
 class DeviationStatusRequest(BaseModel):
     status: str
     assignee_id: int | None = None
     note: str = Field(default="", max_length=2000)
+
+
+class DeviationReviewRequest(BaseModel):
+    note: str = Field(min_length=1, max_length=2000)
+
+
+@router.post('/projects/{project_id}/deviations/{deviation_id}/review')
+def review_deviation(deviation_id: int, payload: DeviationReviewRequest,
+    current_user: auth.CurrentUser = Depends(auth.get_current_user),site=Depends(get_project_site)):
+    from core.models import Deviation, ProjectEvent
+    from django.db import transaction
+    note=payload.note.strip()
+    if not note:
+        raise HTTPException(400,'Опишите, что и каким способом проверено')
+    with transaction.atomic():
+        item=Deviation.objects.select_for_update().filter(pk=deviation_id,zone__site=site).first()
+        if item is None:
+            raise HTTPException(404,'Отклонение не найдено в этом проекте')
+        item.engineering_review={'note':note,'reviewed_at':datetime.now(UTC).isoformat(),
+            'reviewer_id':current_user.id,'reviewer':current_user.full_name or current_user.username}
+        item.save(update_fields=['engineering_review','updated_at'])
+        ProjectEvent.objects.create(site=site,zone=item.zone,deviation=item,actor_id=current_user.id,
+            kind=ProjectEvent.Kind.DEVIATION_STATUS_CHANGED,title='Инженерная проверка обстоятельств',
+            message=note,new_value='Обстоятельства подтверждены ответственным')
+    return {'review':item.engineering_review}
 
 
 @router.post("/projects/{project_id}/deviations/{deviation_id}/status")
@@ -1078,6 +1114,8 @@ def change_project_deviation_status(
     valid = {key for key, _ in Deviation.Status.choices}
     if payload.status not in valid:
         raise HTTPException(400, f"Недопустимое состояние: {payload.status}")
+    if payload.status in {'resolved','confirmed','dismissed'} and not payload.note.strip():
+        raise HTTPException(400,'Для решения требуется основание в комментарии')
 
     assignee_id = payload.assignee_id
     if payload.status == Deviation.Status.ASSIGNED and assignee_id is None:
@@ -1232,7 +1270,7 @@ def _compute_delay_breakdown(report: "schedule_network.NetworkReport", ctx, site
 
 
 @router.get("/projects/{project_id}/schedule-network")
-def get_project_schedule_network(site=Depends(get_project_site)) -> dict:
+def get_project_schedule_network(include_breakdown: bool = True, site=Depends(get_project_site)) -> dict:
     """Сетевой график: критический путь, запас времени и сдвиг даты сдачи.
 
     Отвечает на вопрос, ради которого ведётся весь фотоконтроль: отстаёт ли
@@ -1240,11 +1278,20 @@ def get_project_schedule_network(site=Depends(get_project_site)) -> dict:
     """
     ctx = get_context(site=site)
     report = schedule_network.build_report(
-        ctx.schedule, datetime.now(UTC).date(), site=site
+        ctx.schedule, insights.reference_date(site, datetime.now(UTC).date()), site=site
     )
     payload = schedule_network.to_dict(report)
     payload["schedule_is_demo"] = ctx.schedule.is_demo
-    payload["delay_breakdown"] = _compute_delay_breakdown(report, ctx, site)
+    if site.status == "paused":
+        payload.update(project_status="paused", overall_status="paused", projected_finish_date=None,
+                       deadline_status="Приостановлено", shift_days=0)
+        payload["delay_breakdown"] = {"available": False, "shift_days": 0, "categories": [],
+            "method_note": "Проект приостановлен; вклад факторов в новую дату сдачи не рассчитывается."}
+    elif include_breakdown:
+        payload["delay_breakdown"] = _compute_delay_breakdown(report, ctx, site)
+    else:
+        payload["delay_breakdown"] = {"available": False, "shift_days": report.shift_days, "categories": [],
+            "method_note": "Аналитика факторов доступна на странице «Прогноз»."}
     return payload
 
 
@@ -1305,6 +1352,10 @@ def _stage_to_dict(stage) -> dict:
         "parent_id": stage.parent.external_id if stage.parent_id else None,
         "predecessor_ids": sorted(p.external_id for p in stage.predecessors.all()),
         "technology_assumption": stage.technology_assumption,
+        "verified_progress_percent": stage.verified_progress_percent,
+        "verified_progress_date": stage.verified_progress_date.isoformat() if stage.verified_progress_date else None,
+        "verified_progress_note": stage.verified_progress_note,
+        "expected_finish_date": stage.expected_finish_date.isoformat() if stage.expected_finish_date else None,
         "required": [
             {
                 "class_key": item.vocabulary_class.key,
@@ -1349,6 +1400,38 @@ class StageWritePayload(BaseModel):
     required: list[StageRequiredItemPayload] = Field(default_factory=list)
     allowed: list[str] = Field(default_factory=list)
     alternatives_note: str = Field(default="", max_length=2000)
+    verified_progress_percent: float | None = Field(default=None, ge=0, le=100, allow_inf_nan=False)
+    verified_progress_date: date | None = None
+    verified_progress_note: str = Field(default="", max_length=4000)
+    expected_finish_date: date | None = None
+    project_timezone: str = Field(default="UTC", max_length=100)
+
+
+def _validated_progress(payload: StageWritePayload, site) -> dict:
+    from zoneinfo import ZoneInfo
+
+    percent = payload.verified_progress_percent
+    measured = payload.verified_progress_date
+    note = payload.verified_progress_note.strip()
+    expected = payload.expected_finish_date
+    if percent is not None or measured is not None or expected is not None or note:
+        if percent is None or measured is None or not note:
+            raise HTTPException(400, "Укажите физический прогресс, дату замера и основание подтверждения")
+        from zoneinfo import ZoneInfoNotFoundError
+        try:
+            local_today = datetime.now(ZoneInfo(payload.project_timezone)).date()
+        except (ZoneInfoNotFoundError, ValueError):
+            raise HTTPException(400, "Неизвестный часовой пояс проекта")
+        if measured > local_today:
+            raise HTTPException(400, "Дата замера не может быть в будущем")
+        if percent > 0 and measured < payload.start_date:
+            raise HTTPException(400, "Дата замера выполненных объёмов не может быть раньше начала этапа")
+        if expected is not None and expected < measured:
+            raise HTTPException(400, "Ожидаемое окончание не может быть раньше замера")
+        if percent == 100 and expected is not None and expected != measured:
+            raise HTTPException(400, "Для завершённого этапа дата окончания должна совпадать с датой подтверждения")
+    return {"verified_progress_percent": percent, "verified_progress_date": measured,
+            "verified_progress_note": note, "expected_finish_date": expected}
 
 
 def _apply_stage_rule(stage, payload: StageWritePayload) -> None:
@@ -1358,6 +1441,8 @@ def _apply_stage_rule(stage, payload: StageWritePayload) -> None:
     """
     from core.models import StageRequiredItem, StageRule, VocabularyClass
 
+    if len({item.class_key for item in payload.required}) != len(payload.required):
+        raise HTTPException(400, "Один тип техники не может быть указан в требованиях дважды")
     class_keys = {item.class_key for item in payload.required} | set(payload.allowed)
     vocab_by_key = {c.key: c for c in VocabularyClass.objects.filter(key__in=class_keys)}
     missing = class_keys - set(vocab_by_key)
@@ -1398,28 +1483,34 @@ def create_project_stage(
     if payload.end_date < payload.start_date:
         raise HTTPException(400, "Дата окончания не может быть раньше даты начала")
 
-    zone = Zone.objects.filter(external_id=payload.zone_id, site=site).first()
-    if zone is None:
-        raise HTTPException(404, "Зона не найдена в этом проекте")
-
-    parent = None
-    if payload.parent_id:
-        parent = Stage.objects.filter(external_id=payload.parent_id, zone__site=site).first()
-        if parent is None:
-            raise HTTPException(404, "Родительский этап не найден в этом проекте")
-
-    predecessors = list(Stage.objects.filter(external_id__in=payload.predecessor_ids, zone__site=site))
-    missing_predecessors = set(payload.predecessor_ids) - {p.external_id for p in predecessors}
-    if missing_predecessors:
-        raise HTTPException(400, f"Предшественники не найдены в этом проекте: {sorted(missing_predecessors)}")
-
-    index = Stage.objects.filter(zone__site=site).count() + 1
-    external_id = f"site{site.pk}-stage-{index}"
-    while Stage.objects.filter(external_id=external_id).exists():
-        index += 1
-        external_id = f"site{site.pk}-stage-{index}"
+    progress_fields = _validated_progress(payload, site)
 
     with transaction.atomic():
+        from core.models import ConstructionSite
+        ConstructionSite.objects.select_for_update().get(pk=site.pk)
+        zone = Zone.objects.filter(external_id=payload.zone_id, site=site).first()
+        if zone is None:
+            raise HTTPException(404, "Зона не найдена в этом проекте")
+
+        parent = None
+        if payload.parent_id:
+            parent = Stage.objects.filter(external_id=payload.parent_id, zone__site=site).first()
+            if parent is None:
+                raise HTTPException(404, "Родительский этап не найден в этом проекте")
+
+        predecessors = list(Stage.objects.filter(external_id__in=payload.predecessor_ids, zone__site=site))
+        missing_predecessors = set(payload.predecessor_ids) - {p.external_id for p in predecessors}
+        if missing_predecessors:
+            raise HTTPException(400, f"Предшественники не найдены в этом проекте: {sorted(missing_predecessors)}")
+
+        index = Stage.objects.filter(zone__site=site).count() + 1
+        external_id = f"site{site.pk}-stage-{index}"
+        while Stage.objects.filter(external_id=external_id).exists():
+            index += 1
+            external_id = f"site{site.pk}-stage-{index}"
+
+        from .schedule_validation import validate_project_links
+        validate_project_links(site, external_id, payload.parent_id, payload.predecessor_ids)
         stage = Stage.objects.create(
             external_id=external_id,
             zone=zone,
@@ -1429,6 +1520,7 @@ def create_project_stage(
             start_date=payload.start_date,
             end_date=payload.end_date,
             technology_assumption=payload.technology_assumption.strip(),
+            **progress_fields,
             is_demo=False,
         )
         stage.predecessors.set(predecessors)
@@ -1449,42 +1541,41 @@ def update_project_stage(
 
     from core.models import Stage, Zone
 
-    stage = Stage.objects.filter(external_id=stage_id, zone__site=site).first()
-    if stage is None:
-        raise HTTPException(404, "Этап не найден в этом проекте")
-
-    trimmed_name = payload.work_name.strip()
-    if not trimmed_name:
-        raise HTTPException(400, "Название этапа не может быть пустым")
-    if payload.end_date < payload.start_date:
-        raise HTTPException(400, "Дата окончания не может быть раньше даты начала")
-
-    zone = Zone.objects.filter(external_id=payload.zone_id, site=site).first()
-    if zone is None:
-        raise HTTPException(404, "Зона не найдена в этом проекте")
-
-    parent = None
-    if payload.parent_id:
-        if payload.parent_id == stage_id:
-            raise HTTPException(400, "Этап не может быть родителем самомому себе")
-        parent = Stage.objects.filter(external_id=payload.parent_id, zone__site=site).first()
-        if parent is None:
-            raise HTTPException(404, "Родительский этап не найден в этом проекте")
-        # Предотвращаем цикл: новый родитель не должен оказаться собственным потомком редактируемого этапа.
-        cursor = parent
-        while cursor is not None:
-            if cursor.pk == stage.pk:
-                raise HTTPException(400, "Нельзя сделать родителем собственного потомка — получится цикл")
-            cursor = cursor.parent
-
-    if stage_id in payload.predecessor_ids:
-        raise HTTPException(400, "Этап не может быть предшественником самому себе")
-    predecessors = list(Stage.objects.filter(external_id__in=payload.predecessor_ids, zone__site=site))
-    missing_predecessors = set(payload.predecessor_ids) - {p.external_id for p in predecessors}
-    if missing_predecessors:
-        raise HTTPException(400, f"Предшественники не найдены в этом проекте: {sorted(missing_predecessors)}")
-
     with transaction.atomic():
+        from core.models import ConstructionSite
+        ConstructionSite.objects.select_for_update().get(pk=site.pk)
+        stage = Stage.objects.filter(external_id=stage_id, zone__site=site).first()
+        if stage is None:
+            raise HTTPException(404, "Этап не найден в этом проекте")
+
+        trimmed_name = payload.work_name.strip()
+        if not trimmed_name:
+            raise HTTPException(400, "Название этапа не может быть пустым")
+        if payload.end_date < payload.start_date:
+            raise HTTPException(400, "Дата окончания не может быть раньше даты начала")
+
+        progress_fields = _validated_progress(payload, site) if payload.model_fields_set & {"verified_progress_percent", "verified_progress_date", "verified_progress_note", "expected_finish_date"} else {}
+
+        zone = Zone.objects.filter(external_id=payload.zone_id, site=site).first()
+        if zone is None:
+            raise HTTPException(404, "Зона не найдена в этом проекте")
+
+        parent = None
+        if payload.parent_id:
+            if payload.parent_id == stage_id:
+                raise HTTPException(400, "Этап не может быть родителем самомому себе")
+            parent = Stage.objects.filter(external_id=payload.parent_id, zone__site=site).first()
+            if parent is None:
+                raise HTTPException(404, "Родительский этап не найден в этом проекте")
+        if stage_id in payload.predecessor_ids:
+            raise HTTPException(400, "Этап не может быть предшественником самому себе")
+        predecessors = list(Stage.objects.filter(external_id__in=payload.predecessor_ids, zone__site=site))
+        missing_predecessors = set(payload.predecessor_ids) - {p.external_id for p in predecessors}
+        if missing_predecessors:
+            raise HTTPException(400, f"Предшественники не найдены в этом проекте: {sorted(missing_predecessors)}")
+
+        from .schedule_validation import validate_project_links
+        validate_project_links(site, stage_id, payload.parent_id, payload.predecessor_ids)
         stage.zone = zone
         stage.parent = parent
         stage.work_code = payload.work_code.strip()
@@ -1492,6 +1583,8 @@ def update_project_stage(
         stage.start_date = payload.start_date
         stage.end_date = payload.end_date
         stage.technology_assumption = payload.technology_assumption.strip()
+        for field_name, value in progress_fields.items():
+            setattr(stage, field_name, value)
         stage.save(
             update_fields=[
                 "zone",
@@ -1501,6 +1594,7 @@ def update_project_stage(
                 "start_date",
                 "end_date",
                 "technology_assumption",
+                *progress_fields,
             ]
         )
         stage.predecessors.set(predecessors)
@@ -1522,31 +1616,35 @@ def delete_project_stage(
     """
     from core.models import Deviation, Stage, StageEvaluationRecord
 
-    stage = Stage.objects.filter(external_id=stage_id, zone__site=site).first()
-    if stage is None:
-        raise HTTPException(404, "Этап не найден в этом проекте")
+    from django.db import transaction
+    from core.models import ConstructionSite
+    with transaction.atomic():
+        ConstructionSite.objects.select_for_update().get(pk=site.pk)
+        stage = Stage.objects.filter(external_id=stage_id, zone__site=site).first()
+        if stage is None:
+            raise HTTPException(404, "Этап не найден в этом проекте")
 
-    child_count = Stage.objects.filter(parent=stage).count()
-    successor_count = Stage.objects.filter(predecessors=stage).count()
-    evaluation_count = StageEvaluationRecord.objects.filter(stage=stage).count()
-    deviation_count = Deviation.objects.filter(stage=stage).count()
-    if child_count or successor_count or evaluation_count or deviation_count:
-        parts = []
-        if child_count:
-            parts.append(f"вложенных этапов: {child_count}")
-        if successor_count:
-            parts.append(f"этапов, где он указан предшественником: {successor_count}")
-        if evaluation_count:
-            parts.append(f"результатов проверки: {evaluation_count}")
-        if deviation_count:
-            parts.append(f"отклонений: {deviation_count}")
-        raise HTTPException(
-            400,
-            "Нельзя удалить этап — с ним связаны данные ("
-            + ", ".join(parts)
-            + "). Сначала удалите или перенесите их.",
-        )
-    stage.delete()
+        child_count = Stage.objects.filter(parent=stage).count()
+        successor_count = Stage.objects.filter(predecessors=stage).count()
+        evaluation_count = StageEvaluationRecord.objects.filter(stage=stage).count()
+        deviation_count = Deviation.objects.filter(stage=stage).count()
+        if child_count or successor_count or evaluation_count or deviation_count:
+            parts = []
+            if child_count:
+                parts.append(f"вложенных этапов: {child_count}")
+            if successor_count:
+                parts.append(f"этапов, где он указан предшественником: {successor_count}")
+            if evaluation_count:
+                parts.append(f"результатов проверки: {evaluation_count}")
+            if deviation_count:
+                parts.append(f"отклонений: {deviation_count}")
+            raise HTTPException(
+                400,
+                "Нельзя удалить этап — с ним связаны данные ("
+                + ", ".join(parts)
+                + "). Сначала удалите или перенесите их.",
+            )
+        stage.delete()
     return {"status": "ok"}
 
 
@@ -1681,6 +1779,7 @@ class FrameZonePayload(BaseModel):
 
     name: str = Field(min_length=1, max_length=200)
     kind: str
+    color: str = Field(default="", pattern=r"^(#[0-9a-fA-F]{6})?$")
     polygon: list[list[float]]
     stage_id: str | None = None
     note: str = ""
@@ -1704,6 +1803,7 @@ def _frame_zone_to_dict(row) -> dict:
         "id": row.pk,
         "name": row.name,
         "kind": row.kind,
+        "color": row.color,
         "kind_label_ru": row.get_kind_display(),
         "polygon": row.polygon,
         "reference_width": row.reference_width,
@@ -1753,6 +1853,7 @@ def _replace_frame_zones(
                     camera=camera,
                     name=zone.name.strip(),
                     kind=zone.kind,
+                    color=zone.color.lower(),
                     stage=stages_by_id.get(zone.stage_id) if zone.stage_id else None,
                     polygon=zone.polygon,
                     reference_width=reference_width,
@@ -1808,7 +1909,7 @@ def replace_camera_frame_zones(
 
 
 @router.get("/projects/{project_id}/cameras/{camera_id}/reference-image")
-def get_camera_reference_image(camera_id: str, site=Depends(get_project_site)) -> FileResponse:
+def get_camera_reference_image(camera_id: str, request: Request, site=Depends(get_project_site)) -> Response:
     """Последний снимок камеры — подложка для редактора зон.
 
     Зоны рисуются поверх реального кадра, иначе инженер не понял бы, где
@@ -1835,9 +1936,7 @@ def get_camera_reference_image(camera_id: str, site=Depends(get_project_site)) -
     if not image_path.is_file() or not any(image_path.is_relative_to(root) for root in allowed_roots):
         raise HTTPException(404, "Файл опорного снимка не найден на диске")
 
-    response = FileResponse(image_path)
-    response.headers["Cache-Control"] = "private, no-store"
-    return response
+    return image_response(image_path, request, preview=True)
 
 
 def _run_observation_pipeline(
@@ -1849,6 +1948,7 @@ def _run_observation_pipeline(
     camera_id: str | None,
     image: UploadFile,
     require_zone_in_schedule: bool = True,
+    captured_at: datetime | None = None,
 ) -> dict:
     """Общее тело анализа снимка: детекция, сопоставление с графиком, сохранение,
     обогащение ИИ. Используется и одиночной загрузкой снимка (create_project_observation),
@@ -1861,6 +1961,10 @@ def _run_observation_pipeline(
     активных этапов).
     """
     ctx = get_context(site=site)
+    if camera_id:
+        from core.models import Camera
+        if not Camera.objects.filter(external_id=camera_id,zone__external_id=zone_id,zone__site=site).exists():
+            raise HTTPException(400, 'Камера должна принадлежать выбранному проекту и зоне')
     if require_zone_in_schedule and not ctx.schedule.stages_for_zone(zone_id):
         raise HTTPException(404, f"Зона не найдена в графике проекта: {zone_id}")
 
@@ -1878,9 +1982,16 @@ def _run_observation_pipeline(
     image_sha256 = hasher.hexdigest()
 
     detector = get_detector()
-    # Классификатор-корректор обучен только на коррекциях legacy-проекта -- не применяется
-    # автоматически к новым проектам (см. план, граница AI Learning).
-    detections = detector.detect(dest_path, apply_correction_classifier=site.is_legacy)
+    execution_trace = {}
+    # Project uploads always use their exact site scope, including the legacy project.
+    try:
+        detections = detector.detect(dest_path, site_id=site.pk, execution_trace=execution_trace)
+    except Exception as exc:
+        from .detector import DetectorBusyError
+        if isinstance(exc,DetectorBusyError):
+            dest_path.unlink(missing_ok=True)
+            raise HTTPException(503,str(exc),headers={'Retry-After':'5'}) from exc
+        raise
 
     image_size = _image_size(dest_path)
     observation_ai.apply_zones_and_activity(
@@ -1888,6 +1999,8 @@ def _run_observation_pipeline(
         camera_external_id=camera_id,
         image_size=image_size,
         observed_date=observed_date if date_confirmed else None,
+        captured_at=captured_at,
+        image_sha256=image_sha256,
     )
 
     evaluation = evaluate_observation(
@@ -1897,6 +2010,8 @@ def _run_observation_pipeline(
         detections=detections,
         schedule=ctx.schedule,
         rules=ctx.rules,
+        frame_zones=frame_zones.load_frame_zones(camera_id) if camera_id else [],
+        analysis_context=detector_context(detector, execution_trace),
     )
 
     saved_to_db = persistence.persist_observation(
@@ -1908,24 +2023,21 @@ def _run_observation_pipeline(
         site=site,
         camera_external_id=camera_id,
         image_size=image_size,
+        captured_at=captured_at,
     )
 
     critical_ids = schedule_network.critical_stage_ids(ctx.schedule)
-    ai = observation_ai.enrich_observation(
-        image_path=dest_path,
-        image_sha256=image_sha256,
-        zone_name=zone_id,
-        evaluation=evaluation,
-        schedule=ctx.schedule,
-        uncovered_zones=frame_zones.uncovered_stage_zones(site=site),
-        critical_stage_ids=critical_ids,
-    )
-    persistence.update_observation_vision(observation_uuid, ai.get("vision"))
+    from . import background_analysis
+    uncovered_zones = frame_zones.uncovered_stage_zones(site=site)
+    ai = background_analysis.deterministic_ai(evaluation, uncovered_zones)
+    ai["execution_trace"] = execution_trace
 
     # Отклонения живут дольше снимка: одно и то же нарушение на соседних кадрах
     # должно остаться одной записью, а исчезнувшее -- закрыться этим же снимком.
     lifecycle = {"available": False, "opened": [], "repeated": [], "auto_resolved": []}
     if saved_to_db:
+        from .correction_tasks import enqueue_if_needed
+        enqueue_if_needed(observation_uuid, site)
         findings = deviations_module.findings_from_evaluation(
             evaluation, critical_stage_ids=critical_ids
         )
@@ -1941,6 +2053,16 @@ def _run_observation_pipeline(
             observation_status=evaluation.overall_status,
             critical_stage_ids=critical_ids,
         )
+
+    if saved_to_db:
+        ai = background_analysis.enqueue(
+            observation_id=observation_uuid, site_id=site.pk, image_path=dest_path,
+            image_sha256=image_sha256, zone_name=zone_id, evaluation=evaluation,
+            schedule=ctx.schedule, uncovered_zones=uncovered_zones,
+            critical_stage_ids=critical_ids, initial=ai,
+        )
+    else:
+        ai = {**ai, "status": "failed", "reason": "Наблюдение не сохранено в БД"}
 
     return {
         "observation_id": observation_id,
@@ -1963,6 +2085,7 @@ def _run_observation_pipeline(
                 "required": e.required,
                 "allowed": e.allowed,
                 "quantity_checks": [_quantity_check_to_dict(c) for c in e.quantity_checks],
+                "methodology": e.methodology,
                 "missing_required": e.missing_required,
                 "explanation_ru": e.explanation_ru,
                 "unexpected_detections": [_detection_to_dict(d) for d in e.unexpected_detections],
@@ -1983,6 +2106,7 @@ def create_project_observation(
     observed_date: str | None = Form(None),
     date_confirmed: bool = Form(False),
     camera_id: str | None = Form(None),
+    captured_at: str | None = Form(None),
     image: UploadFile = File(...),
     site=Depends(get_project_site),
 ) -> dict:
@@ -1993,6 +2117,16 @@ def create_project_observation(
         except ValueError as exc:
             raise HTTPException(400, "observed_date должен быть в формате YYYY-MM-DD") from exc
 
+    parsed_capture = None
+    if captured_at:
+        try:
+            parsed_capture = datetime.fromisoformat(captured_at.replace('Z','+00:00'))
+            if parsed_capture.tzinfo is None or not date_confirmed or parsed_date != parsed_capture.date():
+                raise ValueError('Несогласованные дата или часовой пояс')
+            if parsed_capture > datetime.now(UTC):
+                raise ValueError('Время съёмки в будущем')
+        except ValueError as exc:
+            raise HTTPException(400, 'Укажите подтверждённое время съёмки с часовым поясом и той же датой') from exc
     return _run_observation_pipeline(
         site=site,
         zone_id=zone_id,
@@ -2000,11 +2134,12 @@ def create_project_observation(
         date_confirmed=date_confirmed,
         camera_id=camera_id,
         image=image,
+        captured_at=parsed_capture,
     )
 
 
 @router.get("/projects/{project_id}/observations/{observation_id}/image")
-def get_project_observation_image(observation_id: str, site=Depends(get_project_site)) -> FileResponse:
+def get_project_observation_image(observation_id: str, request: Request, preview: bool = False, site=Depends(get_project_site)) -> Response:
     image_path_str = persistence.get_observation_image_path(observation_id, site=site)
     if image_path_str is None:
         raise HTTPException(404, "Снимок не найден, недоступен в этом проекте или БД временно недоступна")
@@ -2013,9 +2148,7 @@ def get_project_observation_image(observation_id: str, site=Depends(get_project_
     allowed_roots = (config.UPLOADS_DIR.resolve(), (config.DATA_DIR / "raw").resolve())
     if not image_path.is_file() or not any(image_path.is_relative_to(root) for root in allowed_roots):
         raise HTTPException(404, "Файл снимка не найден на диске")
-    response = FileResponse(image_path)
-    response.headers["Cache-Control"] = "private, no-store"
-    return response
+    return image_response(image_path, request, preview=preview)
 
 
 @router.get("/projects/{project_id}/observations/{observation_id}")
@@ -2056,3 +2189,31 @@ def create_project_correction(
             404, "Наблюдение не найдено, недоступно в этом проекте, снимок недоступен или БД временно недоступна"
         )
     return {"correction": result}
+
+
+@router.post("/projects/{project_id}/correction-models/{version_id}/activate")
+def activate_project_correction_model(
+    version_id: int,
+    site=Depends(get_project_site),
+    current_user: auth.CurrentUser = Depends(auth.require_admin),
+) -> dict:
+    """Explicitly publish a measured project candidate for subsequent observations."""
+    from django.db import transaction
+    from core.models import ConstructionSite, CorrectionTrainingRun, ModelVersion
+    from .correction_activation import activation_problem
+
+    with transaction.atomic():
+        ConstructionSite.objects.select_for_update().get(pk=site.pk)
+        version = ModelVersion.objects.select_for_update().filter(pk=version_id, site=site).first()
+        if version is None:
+            raise HTTPException(404, "Версия модели не найдена в этом проекте")
+        if version.status == ModelVersion.Status.PRODUCTION:
+            return {"version_id": version.pk, "status": version.status, "site_id": site.pk}
+        completed = CorrectionTrainingRun.objects.filter(site=site, model_version=version, status="succeeded").exists()
+        problem = activation_problem(version, completed=completed)
+        if problem:
+            raise HTTPException(422, problem)
+        ModelVersion.objects.filter(site=site, status=ModelVersion.Status.PRODUCTION).update(status=ModelVersion.Status.ARCHIVED)
+        version.status = ModelVersion.Status.PRODUCTION
+        version.save(update_fields=["status"])
+    return {"version_id": version.pk, "status": version.status, "site_id": site.pk}

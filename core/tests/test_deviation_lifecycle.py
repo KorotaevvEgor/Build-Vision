@@ -108,22 +108,17 @@ class DeviationLifecycleTests(TestCase):
         self.assertEqual(Deviation.objects.count(), 2)
         self.assertEqual(
             set(Deviation.objects.values_list("status", flat=True)),
-            {Deviation.Status.RESOLVED, Deviation.Status.DETECTED},
+            {Deviation.Status.DETECTED},
         )
 
-    def test_clean_next_frame_closes_deviation_and_attaches_after_photo(self) -> None:
+    def test_clean_frame_does_not_replace_engineering_decision(self):
         self._sync(self._observation(), [finding()])
         clean = self._observation(status="no_deviation")
         result = self._sync(clean, [], status="no_deviation")
-
         deviation = Deviation.objects.get()
-        self.assertEqual(deviation.status, Deviation.Status.RESOLVED)
-        self.assertTrue(deviation.auto_resolved)
-        self.assertEqual(deviation.resolved_observation_id, clean.pk)
-        self.assertEqual(len(result["auto_resolved"]), 1)
-        self.assertTrue(
-            ProjectEvent.objects.filter(kind=ProjectEvent.Kind.DEVIATION_AUTO_RESOLVED).exists()
-        )
+        self.assertEqual(deviation.status, Deviation.Status.DETECTED)
+        self.assertFalse(deviation.auto_resolved)
+        self.assertEqual(result["auto_resolved"], [])
 
     def test_insufficient_data_frame_does_not_close_anything(self) -> None:
         """Снимок, по которому ничего не установлено, не доказывает устранения."""
@@ -166,7 +161,8 @@ class DeviationLifecycleTests(TestCase):
     def test_closed_deviation_reopens_as_a_new_record(self) -> None:
         """Повторное нарушение после устранения — новое событие, а не воскрешение старого."""
         self._sync(self._observation(), [finding()])
-        self._sync(self._observation(status="no_deviation"), [], status="no_deviation")
+        closed=Deviation.objects.get()
+        deviations_module.change_status(deviation_id=closed.pk,site=self.site,status="resolved",user_id=None,assignee_id=None,note="Проверено ответственным")
         self._sync(self._observation(), [finding()])
 
         self.assertEqual(Deviation.objects.count(), 2)

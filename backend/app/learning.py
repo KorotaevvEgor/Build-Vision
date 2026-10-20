@@ -1,4 +1,4 @@
-"""Модуль «AI Learning»: коррекции инженера и версии классификатора-корректора.
+"""Модуль «Learning»: коррекции инженера и версии классификатора-корректора.
 
 Идея (см. план): вместо дообучения всего YOLO-World — лёгкий классификатор
 поверх CLIP-эмбеддингов, обучаемый на подтверждениях/исправлениях инженера
@@ -139,7 +139,7 @@ def _version_to_dict(version) -> dict:
 def learning_stats() -> dict:
     """Реальные счётчики для «Центра обучения AI»: подтверждения/исправления/не-техника.
 
-    Корректор-классификатор — legacy-only функциональность (см. план, граница AI Learning):
+    Корректор-классификатор — legacy-only функциональность (см. план, граница Learning):
     статистика считается только по коррекциям legacy-проекта; орфанные коррекции
     (observation=NULL) и коррекции других проектов исключены.
     """
@@ -161,9 +161,9 @@ def learning_stats() -> dict:
         else:
             fixed_errors += 1
 
-    production = ModelVersion.objects.filter(status=ModelVersion.Status.PRODUCTION).first()
+    production = ModelVersion.objects.filter(status=ModelVersion.Status.PRODUCTION, site__isnull=True).first()
     candidates = list(
-        ModelVersion.objects.filter(status=ModelVersion.Status.CANDIDATE).order_by("-created_at")
+        ModelVersion.objects.filter(status=ModelVersion.Status.CANDIDATE, site__isnull=True).order_by("-created_at")
     )
 
     return {
@@ -182,7 +182,7 @@ def list_model_versions() -> dict:
         return {"available": False, "versions": []}
     from core.models import ModelVersion
 
-    versions = ModelVersion.objects.all().order_by("-created_at")
+    versions = ModelVersion.objects.filter(site__isnull=True).order_by("-created_at")
     return {"available": True, "versions": [_version_to_dict(v) for v in versions]}
 
 
@@ -229,12 +229,12 @@ def deploy_version(version_id: int) -> dict | None:
     from core.models import ModelVersion
 
     try:
-        candidate = ModelVersion.objects.get(id=version_id)
+        candidate = ModelVersion.objects.get(id=version_id, site__isnull=True)
     except ModelVersion.DoesNotExist:
         return None
 
     with transaction.atomic():
-        ModelVersion.objects.filter(status=ModelVersion.Status.PRODUCTION).update(
+        ModelVersion.objects.filter(status=ModelVersion.Status.PRODUCTION, site__isnull=True).update(
             status=ModelVersion.Status.ARCHIVED
         )
         candidate.status = ModelVersion.Status.PRODUCTION

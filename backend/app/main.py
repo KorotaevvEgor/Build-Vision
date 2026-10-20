@@ -48,6 +48,9 @@ from .detector import get_detector
 from .matching import evaluate_observation
 from .projects_router import router as projects_router
 from .security import ApiRequestGuard
+from .registration import router as registration_router
+from .documentation_router import router as documentation_router
+from .correction_tasks import router as correction_tasks_router
 from .weather import fetch_forecast
 from .weather_matching import evaluate_weather_risks
 
@@ -72,6 +75,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(projects_router)
+app.include_router(registration_router)
+app.include_router(documentation_router)
+app.include_router(correction_tasks_router)
+
+
+@app.get("/api/admin/analysis-queue")
+def analysis_queue_health(current_user: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+    from .background_analysis import worker
+    return worker.health()
 
 
 @app.get("/api/health")
@@ -706,6 +718,8 @@ def _quantity_check_to_dict(check) -> dict:
         "required_qty": check.required_qty,
         "actual_qty": check.actual_qty,
         "satisfied": check.satisfied,
+        "observed_qty": check.observed_qty,
+        "excluded_qty": check.excluded_qty,
     }
 
 
@@ -724,102 +738,19 @@ def create_observation(
     после подтверждения OCR-извлечения штампа (см. план, методика п.1).
     Без date_confirmed=true результат всегда «Недостаточно данных».
     """
-    ctx = get_context()
-    if not ctx.schedule.stages_for_zone(zone_id):
-        raise HTTPException(404, f"Зона не найдена в графике: {zone_id}")
-
-    parsed_date: date | None = None
+    from .projects_router import _run_observation_pipeline
+    from core.models import ConstructionSite
+    site = ConstructionSite.objects.get(is_legacy=True)
+    parsed_date = None
     if observed_date:
         try:
             parsed_date = date.fromisoformat(observed_date)
         except ValueError as exc:
             raise HTTPException(400, "observed_date должен быть в формате YYYY-MM-DD") from exc
-
-    config.UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
-    suffix = Path(image.filename or "upload.jpg").suffix or ".jpg"
-    observation_uuid = uuid.uuid4()
-    observation_id = str(observation_uuid)
-    dest_path = config.UPLOADS_DIR / f"{observation_id}{suffix}"
-
-    # Функция синхронная (не async def): Django ORM в get_context()/persistence.*
-    # вызывает обычные синхронные запросы и запрещает вызов из async-контекста
-    # без sync_to_async. FastAPI запускает синхронные endpoint'ы в пуле потоков,
-    # так что это не блокирует другие запросы.
-    hasher = hashlib.sha256()
-    with dest_path.open("wb") as out:
-        while chunk := image.file.read(1024 * 1024):
-            hasher.update(chunk)
-            out.write(chunk)
-    image_sha256 = hasher.hexdigest()
-
-    detector = get_detector()
-    detections = detector.detect(dest_path)
-
-    image_size = _image_size(dest_path)
-    observation_ai.apply_zones_and_activity(
-        detections,
-        camera_external_id=camera_id,
-        image_size=image_size,
-        observed_date=parsed_date if date_confirmed else None,
+    return _run_observation_pipeline(
+        site=site, zone_id=zone_id, observed_date=parsed_date,
+        date_confirmed=date_confirmed, camera_id=camera_id, image=image,
     )
-
-    evaluation = evaluate_observation(
-        zone_id=zone_id,
-        observed_date=parsed_date,
-        date_confirmed=bool(date_confirmed and parsed_date is not None),
-        detections=detections,
-        schedule=ctx.schedule,
-        rules=ctx.rules,
-    )
-
-    saved_to_db = persistence.persist_observation(
-        observation_id=observation_uuid,
-        zone_id=zone_id,
-        image_path=str(dest_path),
-        image_sha256=image_sha256,
-        evaluation=evaluation,
-        camera_external_id=camera_id,
-        image_size=image_size,
-    )
-
-    ai = observation_ai.enrich_observation(
-        image_path=dest_path,
-        image_sha256=image_sha256,
-        zone_name=zone_id,
-        evaluation=evaluation,
-        schedule=ctx.schedule,
-        uncovered_zones=frame_zones.uncovered_stage_zones(),
-    )
-
-    return {
-        "observation_id": observation_id,
-        "saved_to_db": saved_to_db,
-        "ai": ai,
-        "image_sha256": image_sha256,
-        "zone_id": evaluation.zone_id,
-        "observed_date": evaluation.observed_date.isoformat() if evaluation.observed_date else None,
-        "date_confirmed": evaluation.date_confirmed,
-        "overall_status": evaluation.overall_status,
-        "overall_status_label_ru": evaluation.overall_status_label_ru,
-        "overall_explanation_ru": evaluation.overall_explanation_ru,
-        "stages": [
-            {
-                "stage_id": e.stage_id,
-                "work_name": e.work_name,
-                "status": e.status,
-                "status_label_ru": e.status_label_ru,
-                "required": e.required,
-                "allowed": e.allowed,
-                "quantity_checks": [_quantity_check_to_dict(c) for c in e.quantity_checks],
-                "missing_required": e.missing_required,
-                "explanation_ru": e.explanation_ru,
-                "unexpected_detections": [_detection_to_dict(d) for d in e.unexpected_detections],
-                "ambiguous_detections": [_detection_to_dict(d) for d in e.ambiguous_detections],
-            }
-            for e in evaluation.stage_evaluations
-        ],
-        "detections": [_detection_to_dict(d) for d in evaluation.all_detections],
-    }
 
 
 @app.get("/api/observations/{observation_id}/image")
@@ -868,7 +799,7 @@ def create_correction(
     payload: CorrectionCreateRequest,
     current_user: auth.CurrentUser = Depends(project_scope.require_legacy_project_access),
 ) -> dict:
-    """Контрол «Что это?» на неоднозначных/низкоуверенных детекциях (см. модуль «AI Learning»).
+    """Контрол «Что это?» на неоднозначных/низкоуверенных детекциях (см. модуль «Learning»).
 
     Коррекция обрезает фрагмент уже сохранённого снимка наблюдения — поэтому требует
     saved_to_db=true на этапе анализа снимка.
@@ -926,7 +857,14 @@ _frontend_dist = Path(os.environ.get("SK_FRONTEND_DIST", "")) if os.environ.get(
 if _frontend_dist and _frontend_dist.is_dir():
     assets_dir = _frontend_dist / "assets"
     if assets_dir.is_dir():
-        app.mount("/assets", StaticFiles(directory=assets_dir), name="frontend-assets")
+        class CachedAssets(StaticFiles):
+            async def get_response(self, path, scope):
+                response = await super().get_response(path, scope)
+                if response.status_code in (200, 304):
+                    response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+                return response
+
+        app.mount("/assets", CachedAssets(directory=assets_dir), name="frontend-assets")
 
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
@@ -941,5 +879,5 @@ if _frontend_dist and _frontend_dist.is_dir():
         if not candidate.is_relative_to(_frontend_dist.resolve()):
             raise HTTPException(404, "Не найдено")
         if full_path and candidate.is_file():
-            return FileResponse(candidate)
-        return FileResponse(_frontend_dist / "index.html")
+            return FileResponse(candidate, headers={"Cache-Control": "no-cache"} if candidate.name == "index.html" else None)
+        return FileResponse(_frontend_dist / "index.html", headers={"Cache-Control": "no-cache"})

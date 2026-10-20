@@ -1,25 +1,20 @@
-"""Расчётный движок прогноза сроков — без ML-предсказания и без LLM.
+"""Сценарная оценка сроков: плановая дата и отдельно ресурсные риски.
 
-См. план, модуль «Прогноз сроков»:
-  * «% выполнения»/темп — не физический прогресс, а честная эвристика:
-    доля подтверждённых наблюдений зоны за период этапа со статусом
-    `no_deviation`. Документируется как эвристика, а не точный факт.
-  * Погода учитывается только в реальном горизонте прогноза Open-Meteo
-    (~72ч, см. weather.py) — для более далёких дат риск не выдумывается.
-  * Объяснение риска — шаблонный текст на структурированных данных, без
-    LLM-зависимости (см. план, раздел «Авторизация»/«Прогноз сроков»).
+Доля проверок без отклонений не является темпом выполнения работ и не
+переводится в дни задержки. Для прогноза нужны измеренные физические объёмы.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date
 
 from . import django_bridge
 from .schedule import Schedule, Stage
 from .weather import fetch_forecast
 from .weather_matching import evaluate_weather_risks
 from .weather_rules_config import WeatherRule
+from .progress_estimate import estimate_finish
 
 
 @dataclass(frozen=True)
@@ -77,22 +72,17 @@ def forecast_for_stage(
     longitude: float,
     today: date,
     site=None,
+    include_weather: bool = True,
 ) -> dict:
     observations = _stage_observations(stage.zone_id, stage, today, site=site)
     average_compliance = _compliance_rate(observations)
     current_compliance = _compliance_rate(observations[-3:])
 
     planned_days = (stage.end_date - stage.start_date).days + 1
-    projected_end = stage.end_date
-    delay_days = 0
-    if average_compliance is not None and average_compliance > 0:
-        delay_days = max(0, round(planned_days * (1 / average_compliance - 1)))
-        projected_end = stage.end_date + timedelta(days=delay_days)
-    elif average_compliance == 0:
-        # Честно грубая оценка при нулевом наблюдаемом темпе — не точный расчёт,
-        # а сигнал "как минимум весь период заново", помеченный явным риском ниже.
-        delay_days = planned_days
-        projected_end = stage.end_date + timedelta(days=delay_days)
+    projected_end, estimate_kind, completed = estimate_finish(stage, today)
+    delay_days = max(0, (projected_end - stage.end_date).days)
+    # Resource availability is not a measurement of completed work or productivity.
+    # Keep the plan as a reference scenario until physical progress is measured.
 
     factors: list[RiskFactor] = []
 
@@ -108,24 +98,25 @@ def forecast_for_stage(
             RiskFactor(
                 "insufficient_data",
                 "low",
-                "Недостаточно подтверждённых наблюдений по этапу, чтобы надёжно оценить темп.",
+                "Недостаточно подтверждённых наблюдений по этапу, для оценки ресурсного соответствия.",
             )
         )
     elif current_compliance is not None and current_compliance < average_compliance:
         factors.append(
             RiskFactor(
-                "pace_decline",
+                "resource_compliance_decline",
                 "medium",
-                f"Текущий темп ({current_compliance * 100:.0f}% наблюдений без отклонений) ниже "
+                f"Текущая доля проверок без отклонений ({current_compliance * 100:.0f}%) ниже "
                 f"среднего по этапу ({average_compliance * 100:.0f}%).",
             )
         )
 
-    weather_forecast = fetch_forecast(latitude, longitude)
-    weather_report = evaluate_weather_risks(schedule=schedule, weather_rules=weather_rules, forecast=weather_forecast)
-    for period in weather_report.risk_periods:
-        if period.stage_id == stage.stage_id:
-            factors.append(RiskFactor("weather", "medium", period.message))
+    if include_weather:
+        weather_forecast = fetch_forecast(latitude, longitude)
+        weather_report = evaluate_weather_risks(schedule=schedule, weather_rules=weather_rules, forecast=weather_forecast)
+        for period in weather_report.risk_periods:
+            if period.stage_id == stage.stage_id:
+                factors.append(RiskFactor("weather", "medium", period.message))
 
     deviation_count = sum(1 for o in observations if o.overall_status == "possible_deviation")
     if deviation_count >= 2:
@@ -147,6 +138,13 @@ def forecast_for_stage(
         "planned_end_date": stage.end_date.isoformat(),
         "projected_end_date": projected_end.isoformat(),
         "delay_days": delay_days,
+        "estimate_kind": estimate_kind,
+        "physical_progress_percent": stage.verified_progress_percent,
+        "completion_confirmed": completed,
+        "verified_progress_date": stage.verified_progress_date.isoformat() if stage.verified_progress_date else None,
+        "verified_progress_note": stage.verified_progress_note,
+        "estimate_basis": stage.verified_progress_note if estimate_kind != "plan_reference_scenario" else "Календарный план. Соответствие техники не измеряет физический прогресс; сдвиг срока по снимкам не определён.",
+        "uncertainty": "physical_progress_unknown" if estimate_kind == "plan_reference_scenario" else "scenario_requires_updates",
         "average_compliance_percent": round(average_compliance * 100, 1) if average_compliance is not None else None,
         "current_compliance_percent": round(current_compliance * 100, 1) if current_compliance is not None else None,
         "observation_count": len(observations),

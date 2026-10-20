@@ -55,8 +55,9 @@ export function ProjectsPage() {
   const filtered = useMemo(() => {
     if (!projects) return [];
     const q = query.trim().toLowerCase();
-    if (!q) return projects;
-    return projects.filter(
+    const ordered = [...projects].sort((a,b) => Number(b.project_id === 39) - Number(a.project_id === 39));
+    if (!q) return ordered;
+    return ordered.filter(
       (p) => p.name.toLowerCase().includes(q) || p.address.toLowerCase().includes(q),
     );
   }, [projects, query]);
@@ -163,8 +164,8 @@ export function ProjectsPage() {
               </span>
             </div>
             <div className="sk-project-card__body">
-              <h2>{project.name}</h2>
-              <p className="sk-project-card__address">{project.address || "Адрес не указан"}</p>
+              <h2 title={project.name}>{project.name}</h2>
+              <p className="sk-project-card__address" title={project.address}>{project.address || "Адрес не указан"}</p>
 
               {project.current_stage_work_name ? (
                 <div className="sk-project-card__stage">
@@ -188,18 +189,18 @@ export function ProjectsPage() {
                   )}
                 </div>
               ) : (
-                <p className="sk-table__muted">Активный этап не задан</p>
+                <div className="sk-project-card__stage sk-project-card__stage--empty"><span>Активный этап не задан</span></div>
               )}
 
               <div className="sk-project-card__stats">
-                <span className="sk-project-card__stat" title="Снимков проанализировано">
-                  📸 {project.total_observations}
+                <span className="sk-project-card__stat" title="Количество проанализированных снимков проекта">
+                  <strong>{project.total_observations}</strong>
+                  <span>Фотографии</span>
                 </span>
-                {project.open_deviations_count > 0 && (
-                  <span className="sk-project-card__stat sk-project-card__stat--danger" title="Открытые отклонения">
-                    ⚠ {project.open_deviations_count}
-                  </span>
-                )}
+                <span className={`sk-project-card__stat${project.open_deviations_count > 0 ? " sk-project-card__stat--danger" : ""}`} title="Отклонения, которые ещё не закрыты">
+                  <strong>{project.open_deviations_count}</strong>
+                  <span>Открытые отклонения</span>
+                </span>
               </div>
 
               <span className="sk-project-card__cta">

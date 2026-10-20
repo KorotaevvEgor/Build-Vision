@@ -21,3 +21,11 @@ data/uploads/
 .git/
 .github/
 *.md
+
+# Локальные материалы не входят в контекст сборки.
+.test-tmp*/
+.env.*
+*.log
+*.pid
+docs/presentation_assets/
+hackathon_materials/

@@ -3,6 +3,8 @@
 // В разработке /api перенаправляется в FastAPI через Vite proxy.
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+import { requestJsonWithPolicy } from "./apiTransport";
+export { ApiError } from "./apiTransport";
 
 export type DeviationStatus = "no_deviation" | "possible_deviation" | "insufficient_data";
 
@@ -45,9 +47,20 @@ export interface QuantityCheck {
   required_qty: number;
   actual_qty: number;
   satisfied: boolean;
+  observed_qty?: number;
+  excluded_qty?: number;
 }
 
+export interface WorkMethodology {method_version?:string;rule_fingerprint?:string;coverage_verified?:boolean;scope?:string;
+ rule?:{basis?:string;start?:string;end?:string;detector?:{weights?:string;confidence?:number;correction_version?:number|null;execution?:{detector?:{status:string;weights?:string;detection_count?:number;confidence?:number};correction?:{status:string;reason?:string;site_id?:number|null;version_id?:number;candidate_count?:number;classified_count?:number;changed_count?:number}}}};
+ counted_detections?:{index:number;class_key:string;label_ru:string;bbox:number[];confidence:number}[];
+ excluded_detections?:{index:number;class_key:string;label_ru:string;bbox:number[];reason:string}[];}
+export interface ObservationProof {level:string;label:string;independent_count:number;sequence_count:number;reason:string;
+ profile:{min_frames:number;min_interval_seconds:number;max_interval_seconds:number};
+ records:{observation_id:string;outcome:string;independent:boolean;sequence_count:number;reason:string;rule_fingerprint:string;captured_at:string|null}[];}
+
 export interface StageEvaluationResponse {
+  methodology?: WorkMethodology;
   stage_id: string;
   work_name: string;
   status: DeviationStatus;
@@ -108,6 +121,7 @@ export interface ZoneDeviation {
  * а не подменять пустотой.
  */
 export interface ObservationAi {
+  status?: string;
   enabled: boolean;
   reason: string | null;
   vision: VisionAssessment | null;
@@ -118,6 +132,8 @@ export interface ObservationAi {
 }
 
 export interface ObservationResponse {
+  analysis_status?: string;
+  captured_at?: string|null;
   observation_id: string;
   saved_to_db: boolean;
   image_sha256: string;
@@ -135,6 +151,7 @@ export interface ObservationResponse {
 export type FrameZoneKind = "work" | "parking" | "entrance" | "danger" | "uncontrolled";
 
 export interface FrameZone {
+  color?: string;
   id?: number;
   name: string;
   kind: FrameZoneKind;
@@ -345,9 +362,36 @@ export interface DemoSample {
   warmed: boolean;
 }
 
+/** Одна машина, найденная ИИ-моделью на фото. Рамка — доли кадра 0..1 (x1, y1, x2, y2) от верхнего левого угла. */
+export interface AiEquipmentItem {
+  class_key: string;
+  label_ru: string;
+  confidence: number;
+  box: [number, number, number, number];
+}
+
+export interface EquipmentCount {
+  class_key: string;
+  label_ru: string;
+  count: number;
+  max_confidence: number;
+}
+
+/** ИИ-разметка техники по нашему списку классов (backend/app/llm/equipment.py). */
+export interface AiEquipment {
+  available: boolean;
+  items: AiEquipmentItem[];
+  counts: EquipmentCount[];
+  model: string;
+  cached: boolean;
+  error: string | null;
+}
+
 export interface DemoAnalysis {
   detections: Detection[];
-  equipment_counts: { class_key: string; label_ru: string; count: number; max_confidence: number }[];
+  equipment_counts: EquipmentCount[];
+  /** Отсутствует у старых ответов и при недоступной языковой модели — тогда показываем детектор. */
+  ai_equipment?: AiEquipment;
   /** Измеренные ограничения по тем классам, которые реально нашлись на снимке. */
   known_limitations: KnownLimitation[];
   vision: VisionAssessment | null;
@@ -378,6 +422,8 @@ export type DeviationLifecycleStatus =
   | "dismissed";
 
 export interface DeviationRecord {
+  engineering_review?: {note:string;reviewed_at:string;reviewer:string;reviewer_id:number};
+  proof?: ObservationProof;
   id: number;
   kind: string;
   kind_label_ru: string;
@@ -412,6 +458,26 @@ export interface DeviationsResponse {
   items: DeviationRecord[];
   counts: Record<string, number>;
   statuses: { key: DeviationLifecycleStatus; label_ru: string }[];
+}
+
+export interface DeviationEvidenceImage {
+ observation_id:string;label:string;observed_date:string|null;date_confirmed:boolean;created_at:string;
+ captured_at?:string|null;image_width?:number|null;image_height?:number|null;
+ camera_id?:string|null;camera_name?:string|null;detections_source?:'observation';
+ detections?:{id:number;class_key:string;label_ru:string;confidence:number;bbox:number[];ambiguous:boolean;activity:string;activity_reason:string}[];
+}
+export interface DeviationDetailResponse {
+  methodology?: WorkMethodology;
+  deviation: DeviationRecord;
+  quantity_checks: QuantityCheck[];
+  evidence: DeviationEvidenceImage[];
+  events: {id:number;title:string;kind_label_ru:string;created_at:string;message:string;old_value:string;new_value:string;actor:string|null}[];
+}
+export function fetchDeviation(projectId:ProjectId,id:number):Promise<DeviationDetailResponse>{
+  return requestJson(`/api/projects/${projectId}/deviations/${id}`);
+}
+export function reviewDeviation(projectId:ProjectId,id:number,note:string):Promise<unknown>{
+ return requestJson(`/api/projects/${projectId}/deviations/${id}/review`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({note})});
 }
 
 export function fetchDeviations(
@@ -466,6 +532,11 @@ export type StageState =
   | "started_early";
 
 export interface NetworkStage {
+  estimate_kind?: string;
+  physical_progress_percent?: number | null;
+  verified_progress_date?: string | null;
+  verified_progress_note?: string;
+  completion_confirmed?: boolean;
   stage_id: string;
   work_code: string;
   work_name: string;
@@ -510,6 +581,9 @@ export interface DelayBreakdown {
 }
 
 export interface ScheduleNetworkResponse {
+  estimate_kind?: string;
+  uncertainty?: string;
+  estimate_basis?: string;
   available: boolean;
   reason: string;
   /** Работы, замкнутые в цикл связей: пока он не разорван, расчёт невозможен. */
@@ -526,8 +600,8 @@ export interface ScheduleNetworkResponse {
   delay_breakdown: DelayBreakdown;
 }
 
-export function fetchScheduleNetwork(projectId: ProjectId): Promise<ScheduleNetworkResponse> {
-  return requestJson<ScheduleNetworkResponse>(`/api/projects/${projectId}/schedule-network`);
+export function fetchScheduleNetwork(projectId: ProjectId, includeBreakdown = true): Promise<ScheduleNetworkResponse> {
+  return requestJson<ScheduleNetworkResponse>(`/api/projects/${projectId}/schedule-network${includeBreakdown ? "" : "?include_breakdown=false"}`);
 }
 
 export interface StageRuleResponse {
@@ -552,18 +626,6 @@ export interface RulesResponse {
   known_limitations: KnownLimitation[];
 }
 
-export class ApiError extends Error {
-  status: number;
-  /** Разобранное поле `detail` из ответа FastAPI (строка или структура с детальными ошибками), если тело — JSON. */
-  detail: unknown;
-
-  constructor(status: number, message: string, detail?: unknown) {
-    super(message);
-    this.status = status;
-    this.detail = detail;
-  }
-}
-
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   if (!["GET", "HEAD", "OPTIONS"].includes((init?.method ?? "GET").toUpperCase())) {
@@ -573,18 +635,7 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   }
   // credentials: "include" — авторизация идёт через cookie сессии Django
   // (см. backend/app/auth.py), без этого браузер не отправит sessionid на другой порт/домен.
-  const response = await fetch(`${API_BASE_URL}${path}`, { credentials: "include", ...init, headers });
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    let detail: unknown;
-    try {
-      detail = (JSON.parse(body) as { detail?: unknown }).detail;
-    } catch {
-      detail = undefined;
-    }
-    throw new ApiError(response.status, `${response.status} ${response.statusText}: ${body}`, detail);
-  }
-  return response.json() as Promise<T>;
+  return requestJsonWithPolicy<T>(`${API_BASE_URL}${path}`, { credentials: "include", ...init, headers });
 }
 
 export type UserRole = "admin" | "participant";
@@ -964,6 +1015,7 @@ export function fetchCurrentWeather(projectId: ProjectId): Promise<CurrentWeathe
 }
 
 export interface CreateObservationParams {
+  capturedAt?: string;
   projectId: ProjectId;
   zoneId: string;
   observedDate?: string;
@@ -977,6 +1029,7 @@ export async function createObservation(
   params: CreateObservationParams,
 ): Promise<ObservationResponse> {
   const formData = new FormData();
+  if(params.capturedAt) formData.set('captured_at',params.capturedAt);
   formData.set("zone_id", params.zoneId);
   formData.set("date_confirmed", String(params.dateConfirmed));
   if (params.observedDate) {
@@ -1008,7 +1061,7 @@ export interface CurrentStageSummary {
   zone_id: string;
   start_date: string;
   end_date: string;
-  progress_percent: number;
+  progress_percent: number | null;
 }
 
 export interface ZoneDashboardSummary {
@@ -1018,6 +1071,7 @@ export interface ZoneDashboardSummary {
 }
 
 export interface CameraSummary {
+  observation_count?: number;
   camera_id: string;
   name: string;
   zone_id: string;
@@ -1048,6 +1102,9 @@ export interface RiskFactor {
 }
 
 export interface DashboardResponse {
+  reference_date?: string;
+  last_observed_date?: string | null;
+  project_status?: ProjectStatus;
   available: boolean;
   zone_count: number;
   camera_count: number;
@@ -1219,6 +1276,10 @@ export interface StageDetail {
   required: StageRequiredItemDetail[];
   allowed: string[];
   alternatives_note: string;
+  verified_progress_percent?: number | null;
+  verified_progress_date?: string | null;
+  verified_progress_note?: string;
+  expected_finish_date?: string | null;
 }
 
 export function fetchStages(projectId: ProjectId): Promise<{ stages: StageDetail[] }> {
@@ -1231,6 +1292,7 @@ export interface StageRequiredItemPayload {
 }
 
 export interface StageWritePayload {
+  project_timezone?: string;
   work_name: string;
   work_code?: string;
   zone_id: string;
@@ -1242,6 +1304,10 @@ export interface StageWritePayload {
   required?: StageRequiredItemPayload[];
   allowed?: string[];
   alternatives_note?: string;
+  verified_progress_percent?: number | null;
+  verified_progress_date?: string | null;
+  verified_progress_note?: string;
+  expected_finish_date?: string | null;
 }
 
 export function createStage(projectId: ProjectId, payload: StageWritePayload): Promise<{ stage: StageDetail }> {
@@ -1289,6 +1355,9 @@ export function fetchAnalytics(projectId: ProjectId, days = 14): Promise<Analyti
 }
 
 export interface ObservationDetail {
+  ai?: ObservationAi;
+  analysis_status?: string;
+  captured_at?: string|null;
   observation_id: string;
   zone_id: string;
   image_sha256: string;
@@ -1299,6 +1368,7 @@ export interface ObservationDetail {
   overall_explanation_ru: string;
   created_at: string;
   detections: Detection[];
+  ai_equipment?: AiEquipment | null;
   stages: StageEvaluationResponse[];
 }
 
@@ -1335,10 +1405,10 @@ export function fetchStageForecast(projectId: ProjectId, zoneId?: string): Promi
  * на <img>, иначе браузер не отправит cookie сессии на чужой origin.
  */
 export function getObservationImageUrl(projectId: ProjectId, observationId: string): string {
-  return `${API_BASE_URL}/api/projects/${projectId}/observations/${observationId}/image`;
+  return `${API_BASE_URL}/api/projects/${projectId}/observations/${observationId}/image?preview=true`;
 }
 
-// --- Модуль «AI Learning»: коррекции инженера и версии классификатора-корректора ---
+// --- Модуль «Learning»: коррекции инженера и версии классификатора-корректора ---
 
 export interface CreateCorrectionParams {
   projectId: ProjectId;
@@ -1419,3 +1489,28 @@ export function trainModelVersion(): Promise<{ started: boolean; reason?: string
 export function deployModelVersion(versionId: number): Promise<{ version: ModelVersionSummary }> {
   return requestJson(`/api/model-versions/${versionId}/deploy`, { method: "POST" });
 }
+
+export async function submitRegistration(values: {full_name:string;email:string;password:string;password_confirm:string}): Promise<{status:"sent"|"already_sent";email:string}> {
+ const form = new FormData();
+ for (const [key,value] of Object.entries(values)) form.set(key,value);
+ return requestJson("/api/auth/register",{method:"POST",body:form});
+}
+
+export interface PresentationMetadata {available:boolean;title?:string;size?:number;updated_at?:string;url?:string;}
+export function fetchPresentation():Promise<PresentationMetadata>{return requestJson("/api/documentation/presentation");}
+export function publishPresentation(file:File):Promise<PresentationMetadata>{const body=new FormData();body.append("file",file);return requestJson("/api/documentation/presentation",{method:"POST",body});}
+
+export type CorrectionStatus = 'todo' | 'in_progress' | 'ready' | 'training' | 'trained';
+export interface CorrectionAnnotation { id:string; bbox:[number,number,number,number]; original_class_key:string; original_confidence:number|null; corrected_class_key:string|null; }
+export interface CorrectionRun { id:number; status:string; error:string; model_version_id:number|null; model_status?:string|null;can_activate?:boolean;activation_problem?:string|null; version_label:string|null; metrics:Record<string,unknown>|null; created_at:string; started_at:string|null; finished_at:string|null; }
+export interface CorrectionTask { id:number; observation_id:string; title:string; reason:string; status:CorrectionStatus; assignee:string|null; assignee_id:number|null; annotations:CorrectionAnnotation[]; empty_scene:boolean; revision:number; created_at:string; updated_at:string; training_run:CorrectionRun|null; image_width:number; image_height:number; editable:boolean; }
+export interface CorrectionBoard { items:CorrectionTask[]; counts:Record<string,number>; statuses:{key:CorrectionStatus;label:string}[]; vocabulary:{key:string;label_ru:string}[]; sources:{observation_id:string;label:string;date_confirmed:boolean;observed_date:string|null}[]; can_train:boolean; }
+export interface CorrectionPatch { revision:number; status?:CorrectionStatus; annotations?:CorrectionAnnotation[]; empty_scene?:boolean; before_id?:number|null; }
+export function fetchCorrectionBoard(projectId:ProjectId):Promise<CorrectionBoard>{return requestJson(`/api/projects/${projectId}/correction-tasks`);}
+export function fetchCorrectionTask(projectId:ProjectId,id:number):Promise<{task:CorrectionTask;vocabulary:CorrectionBoard['vocabulary'];can_train:boolean}>{return requestJson(`/api/projects/${projectId}/correction-tasks/${id}`);}
+export function patchCorrectionTask(projectId:ProjectId,id:number,payload:CorrectionPatch):Promise<{task:CorrectionTask}>{return requestJson(`/api/projects/${projectId}/correction-tasks/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});}
+export function createCorrectionTask(projectId:ProjectId,observation_id:string):Promise<{task:CorrectionTask}>{return requestJson(`/api/projects/${projectId}/correction-tasks`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({observation_id})});}
+export function syncCorrectionTasks(projectId:ProjectId):Promise<{created:number}>{return requestJson(`/api/projects/${projectId}/correction-tasks/sync`,{method:'POST'});}
+export function trainCorrectionTasks(projectId:ProjectId,task_ids:number[]):Promise<{run:CorrectionRun}>{return requestJson(`/api/projects/${projectId}/correction-tasks/train`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task_ids})});}
+
+export function activateCorrectionModel(projectId:ProjectId,versionId:number):Promise<{version_id:number;status:string;site_id:number}>{return requestJson(`/api/projects/${projectId}/correction-models/${versionId}/activate`,{method:'POST'});}

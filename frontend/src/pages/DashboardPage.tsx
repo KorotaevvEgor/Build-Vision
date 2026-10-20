@@ -2,15 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
-  fetchAnalytics,
+  fetchScheduleNetwork,
   fetchCamera,
   fetchDashboard,
   fetchDeviations,
+  fetchWeatherRisks,
+  type WeatherRiskResponse,
   fetchObservation,
   fetchSite,
   fetchZoneStagesOnDate,
   getObservationImageUrl,
-  type AnalyticsResponse,
+  type ScheduleNetworkResponse,
   type CameraSummary,
   type DashboardResponse,
   type DeviationRecord,
@@ -21,8 +23,10 @@ import {
   type ZoneStageOnDate,
 } from "../api";
 import { useProject } from "../ProjectContext";
+import { DashboardGantt } from "../components/DashboardGantt";
 import { MiniSiteMap } from "../components/MiniSiteMap";
 import { EquipmentIcon } from "../components/EquipmentIcons";
+import { getDashboardDetections } from "../components/dashboardMarkup";
 import { CameraStatIcon, ChartStatIcon, WarningStatIcon } from "../components/DashboardIcons";
 import "./DashboardPage.css";
 
@@ -35,17 +39,15 @@ const CLASS_COLOR_VARS: Record<string, string> = {
   bulldozer: "var(--sk-class-bulldozer)",
   road_roller: "var(--sk-class-road-roller)",
   truck: "var(--sk-class-truck)",
+  drilling_rig: "#b794f6",
+  crawler_crane: "#38bdf8",
+  wheeled_excavator: "#fbbf24",
+  backhoe_loader: "#fb923c",
 };
 
 function classColor(classKey: string): string {
   return CLASS_COLOR_VARS[classKey] ?? "var(--sk-class-unknown)";
 }
-
-const SEVERITY_ICON: Record<string, string> = {
-  critical: "⚠",
-  warning: "⏱",
-  info: "ℹ",
-};
 
 const OPEN_STATUSES = new Set(["detected", "assigned"]);
 
@@ -57,7 +59,7 @@ function StatCard({
   accent,
 }: {
   icon: ReactNode;
-  value: string | number;
+  value: ReactNode;
   label: string;
   hint?: string;
   accent?: "ok" | "warning" | "danger";
@@ -67,34 +69,13 @@ function StatCard({
       <span className={`sk-stat-card__icon${accent ? ` sk-stat-card__icon--${accent}` : ""}`} aria-hidden="true">
         {icon}
       </span>
-      <div>
-        <div className="sk-stat-card__value">{value}</div>
+      <div className="sk-stat-card__copy">
         <div className="sk-stat-card__label">{label}</div>
         {hint && (
-          <div className={`sk-stat-card__hint${accent ? ` sk-stat-card__hint--${accent}` : ""}`}>{hint}</div>
+          <div title={hint} className={`sk-stat-card__hint${accent ? ` sk-stat-card__hint--${accent}` : ""}`}>{hint}</div>
         )}
       </div>
-    </div>
-  );
-}
-
-/** Компактный столбчатый график с подписями дат — карточка «Динамика отклонений» в нижнем ряду. */
-function MiniBarChart({ data }: { data: { label: string; value: number }[] }) {
-  const max = Math.max(1, ...data.map((d) => d.value));
-  return (
-    <div className="sk-mini-bar-chart">
-      {data.map((d, index) => (
-        <div key={index} className="sk-mini-bar-chart__col">
-          <div className="sk-mini-bar-chart__track">
-            <div
-              className="sk-mini-bar-chart__bar"
-              style={{ height: `${(d.value / max) * 100}%` }}
-              title={`${d.label}: ${d.value}`}
-            />
-          </div>
-          <span className="sk-mini-bar-chart__label">{d.label}</span>
-        </div>
-      ))}
+      <div className={`sk-stat-card__value${accent === "danger" ? " sk-stat-card__value--danger" : ""}`}>{value}</div>
     </div>
   );
 }
@@ -114,9 +95,11 @@ function EquipmentMiniGrid({
           <div key={q.class_key} className={`sk-eq${q.satisfied ? " sk-eq--ok" : " sk-eq--bad"}`}>
             <EquipmentIcon classKey={q.class_key} className="sk-eq__icon" style={{ color: classColor(q.class_key) }} />
             <div className="sk-eq__count">
-              {q.actual_qty}/{q.required_qty}
+              <strong>{q.actual_qty}</strong><span> / {q.required_qty}</span>
             </div>
             <div className="sk-eq__label">{q.label_ru}</div>
+            <div className="sk-eq__status">{q.satisfied ? "В наличии" : `Не хватает ${q.required_qty - q.actual_qty}`}</div>
+            <div className="sk-eq__caption">На фото / по плану</div>
           </div>
         ))}
       </div>
@@ -143,21 +126,48 @@ function EquipmentMiniGrid({
 
 export function DashboardPage() {
   const { projectId, project } = useProject();
+  const isPaused = project.status === "paused";
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [site, setSite] = useState<SiteResponse | null>(null);
   const [deviations, setDeviations] = useState<DeviationRecord[] | null>(null);
-  const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
+  const [scheduleNetwork, setScheduleNetwork] = useState<ScheduleNetworkResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [weatherRisks, setWeatherRisks] = useState<WeatherRiskResponse | null>(null);
+  const [deviationIndex, setDeviationIndex] = useState(0);
+  const deviationListRef = useRef<HTMLUListElement | null>(null);
+  const deviationWheelCleanup = useRef<(() => void) | null>(null);
+  const setDeviationListRef = useCallback((element: HTMLUListElement | null) => {
+    deviationWheelCleanup.current?.();
+    deviationListRef.current = element;
+    if (!element) return;
+    let lastStep = 0;
+    const wheel = (event: WheelEvent) => {
+      if (element.scrollHeight <= element.clientHeight + 1 || !event.deltaY) return;
+      event.preventDefault();
+      const now = performance.now();
+      if (now - lastStep < 350) return;
+      lastStep = now;
+      element.scrollBy({ top: Math.sign(event.deltaY) * (element.clientHeight + 12), behavior: "smooth" });
+    };
+    element.addEventListener("wheel", wheel, { passive: false });
+    deviationWheelCleanup.current = () => element.removeEventListener("wheel", wheel);
+  }, []);
+  useEffect(() => () => deviationWheelCleanup.current?.(), []);
+
 
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
   const [observation, setObservation] = useState<ObservationDetail | null>(null);
   const [observationError, setObservationError] = useState<string | null>(null);
-  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
+  const [loadedImage, setLoadedImage] = useState<{ id:string; width:number; height:number } | null>(null);
+  const [imageErrorId,setImageErrorId] = useState<string|null>(null);
+  const [imageAttempt,setImageAttempt] = useState(0);
+  const [equipmentHover, setEquipmentHover] = useState<{ observationId: string; classKey: string } | null>(null);
   // История снимков камеры для прокрутки назад с Главной: cameraHistory[0] — самый
   // свежий снимок ("онлайн"), historyIndex > 0 — режим просмотра истории.
   const [cameraHistory, setCameraHistory] = useState<ObservationSummary[] | null>(null);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [historyStageInfo, setHistoryStageInfo] = useState<ZoneStageOnDate | null>(null);
+  const [historyStageLoadedId,setHistoryStageLoadedId]=useState<string|null>(null);
   const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null);
   const frameObserverRef = useRef<ResizeObserver | null>(null);
 
@@ -195,28 +205,31 @@ export function DashboardPage() {
     setDashboard(null);
     setSite(null);
     setDeviations(null);
-    setAnalytics(null);
+    setWeatherRisks(null);
+    setDeviationIndex(0);
+    setScheduleNetwork(null);
     setError(null);
     setSelectedCameraId("");
 
-    Promise.all([fetchDashboard(projectId), fetchSite(projectId)])
-      .then(([d, s]) => {
+    fetchDashboard(projectId)
+      .then((d) => {
         if (cancelled) return;
         setDashboard(d);
-        setSite(s);
         if (d.cameras.length > 0) setSelectedCameraId(d.cameras[0].camera_id);
       })
       .catch((err: Error) => {
         if (!cancelled) setError(err.message);
       });
+    fetchWeatherRisks(projectId).then(data => !cancelled && setWeatherRisks(data)).catch(() => {});
+    fetchSite(projectId).then(s=>!cancelled&&setSite(s)).catch(()=>{});
 
     // Отклонения и аналитика грузятся отдельно и не блокируют экран.
     fetchDeviations(projectId)
       .then((data) => !cancelled && setDeviations(data.items))
       .catch(() => !cancelled && setDeviations([]));
-    fetchAnalytics(projectId, 14)
-      .then((data) => !cancelled && setAnalytics(data))
-      .catch(() => !cancelled && setAnalytics(null));
+    fetchScheduleNetwork(projectId)
+      .then(data => !cancelled && setScheduleNetwork(data))
+      .catch(() => !cancelled && setScheduleNetwork(null));
 
     return () => {
       cancelled = true;
@@ -246,6 +259,17 @@ export function DashboardPage() {
   const displayedObservationSummary =
     (cameraHistory && cameraHistory[historyIndex]) ?? selectedCamera?.latest_observation ?? null;
   const selectedObservationId = displayedObservationSummary?.observation_id ?? null;
+  const activeObservation = observation?.observation_id === selectedObservationId ? observation : null;
+  const imageSize = loadedImage?.id===selectedObservationId ? loadedImage : null;
+  const aiMarkupAvailable = Boolean(activeObservation?.ai_equipment?.available);
+  const highlightedClass = equipmentHover?.observationId === selectedObservationId ? equipmentHover.classKey : null;
+  const visualDetections = useMemo(() => getDashboardDetections(activeObservation, imageSize ?? {width:1,height:1}), [activeObservation, imageSize]);
+
+  useEffect(()=>{
+    if(!selectedObservationId||imageSize)return;
+    const timer=window.setTimeout(()=>setImageErrorId(selectedObservationId),20000);
+    return ()=>window.clearTimeout(timer);
+  },[selectedObservationId,imageSize,imageAttempt]);
 
   // Полный разбор (детекции + план/факт по этапу) грузится под выбранный снимок отдельно:
   // сводка `/dashboard`/`/cameras/{id}` отдаёт только статус, без списка объектов.
@@ -253,7 +277,6 @@ export function DashboardPage() {
     let cancelled = false;
     setObservation(null);
     setObservationError(null);
-    setImageSize(null);
     if (!selectedObservationId) return;
     fetchObservation(projectId, selectedObservationId)
       .then((data) => !cancelled && setObservation(data))
@@ -268,11 +291,13 @@ export function DashboardPage() {
   useEffect(() => {
     let cancelled = false;
     setHistoryStageInfo(null);
+    setHistoryStageLoadedId(null);
     if (!isHistoryMode || !selectedCamera || !displayedObservationSummary) return;
     const onDate = displayedObservationSummary.observed_date ?? displayedObservationSummary.created_at.slice(0, 10);
     fetchZoneStagesOnDate(projectId, selectedCamera.zone_id, onDate)
       .then((data) => !cancelled && setHistoryStageInfo(data.stages[0] ?? null))
-      .catch(() => !cancelled && setHistoryStageInfo(null));
+      .catch(() => !cancelled && setHistoryStageInfo(null))
+      .finally(()=>!cancelled&&setHistoryStageLoadedId(displayedObservationSummary.observation_id));
     return () => {
       cancelled = true;
     };
@@ -284,7 +309,7 @@ export function DashboardPage() {
   // пометкой «?» у таких пунктов, а не молчаливым исключением.
   const detectedGroups = useMemo(() => {
     const byClass = new Map<string, { classKey: string; label: string; count: number; ambiguous: boolean }>();
-    for (const d of observation?.detections ?? []) {
+    for (const d of visualDetections) {
       if (!d.in_taxonomy) continue;
       const existing = byClass.get(d.class_key);
       if (existing) {
@@ -295,7 +320,7 @@ export function DashboardPage() {
       }
     }
     return Array.from(byClass.values());
-  }, [observation]);
+  }, [visualDetections]);
 
   // Фактический размер кадра (может отличаться от пропорций фото из-за letterboxing через
   // object-fit: contain) — вычисляем фактический прямоугольник картинки внутри кадра,
@@ -337,7 +362,11 @@ export function DashboardPage() {
     return Math.round(Math.min(100, Math.max(0, ((current - start) / (end - start)) * 100)));
   }, [isHistoryMode, historyStageInfo, displayedObservationSummary]);
 
-  const quantityChecks = matchedStage?.quantity_checks ?? [];
+  const quantityChecks = (matchedStage?.quantity_checks ?? []).map((q) => {
+    if (!aiMarkupAvailable) return q;
+    const actual = detectedGroups.find((g) => g.classKey === q.class_key)?.count ?? 0;
+    return { ...q, actual_qty: actual, satisfied: actual >= q.required_qty };
+  });
 
   const boundaryFeature = site?.geojson.features.find((f) => f.properties?.kind === "site_boundary");
   const mapCenter = useMemo<[number, number] | null>(() => {
@@ -357,7 +386,7 @@ export function DashboardPage() {
   if (error) {
     return <div className="sk-panel sk-panel--error">Не удалось загрузить сводку: {error}</div>;
   }
-  if (!dashboard || !site) {
+  if (!dashboard) {
     return <div className="sk-panel">Загрузка сводки…</div>;
   }
 
@@ -371,35 +400,29 @@ export function DashboardPage() {
     (c) => !c.satisfied && topCriticalDeviation?.equipment.includes(c.class_key),
   );
 
-  // Карточки подбираются не просто по дате, а по одному самому свежему на каждый уровень важности
-  // (критическое / предупреждение / инфо) — при чисто хронологической сортировке верхние
-  // позиции часто занимают один и тот же повторяющийся тип отклонения.
-  const latestBySeverity = (severity: DeviationRecord["severity"]) =>
-    [...(deviations ?? [])]
-      .filter((d) => d.severity === severity)
-      .sort((a, b) => new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime())[0];
-
-  const curatedDeviations = (["critical", "warning", "info"] as const)
-    .map(latestBySeverity)
-    .filter((d): d is DeviationRecord => Boolean(d));
-  const curatedIds = new Set(curatedDeviations.map((d) => d.id));
-  const fallbackDeviations = [...(deviations ?? [])]
-    .filter((d) => !curatedIds.has(d.id))
-    .sort((a, b) => new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime());
-  const recentDeviations = [...curatedDeviations, ...fallbackDeviations].slice(0, 3);
-
-  const deviationsByDay = (analytics?.deviations_by_month ?? []).map((d) => ({
-    // "YYYY-MM" надёжно парсится как дата только с днём — см. аналогичный комментарий в AnalyticsPage.tsx.
-    label: new Date(`${d.month}-01`).toLocaleDateString("ru-RU", { month: "short", year: "numeric" }),
-    value: d.count,
-  }));
-  const deviationsByDayTotal = deviationsByDay.reduce((sum, d) => sum + d.value, 0);
+  const currentFinding = [...openDeviations].sort((a, b) =>
+    Number(b.kind === "quantity_shortfall" && b.before_observation_id === selectedObservationId) -
+    Number(a.kind === "quantity_shortfall" && a.before_observation_id === selectedObservationId) ||
+    new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime()
+  )[0];
+  const weatherPeriod = !weatherRisks?.is_stale ? weatherRisks?.risk_periods[0] : undefined;
+  const weatherFinding: DeviationRecord = {
+    id: -1, kind: "weather_risk", kind_label_ru: "Погодный риск", severity: "info", severity_label_ru: "К сведению",
+    status: "detected", status_label_ru: weatherPeriod ? "Потенциальный риск · прогноз" : "Потенциальный сценарий",
+    title: weatherPeriod ? "Погодные ограничения могут повлиять на работы" : "Потенциальная погодная пауза",
+    message: weatherPeriod ? weatherPeriod.message : "Осадки, усиление ветра или похолодание могут потребовать корректировки порядка работ. Это сценарий для контроля, а не выявленная задержка.",
+    equipment: [], zone_id: "", zone_name: "Площадка", stage_id: weatherPeriod?.stage_id ?? dashboard.current_stage?.stage_id ?? null,
+    work_name: weatherPeriod?.work_name ?? dashboard.current_stage?.work_name ?? null,
+    is_on_critical_path: false, occurrence_count: 0, auto_resolved: false, resolution_note: "", assignee: null, assignee_id: null,
+    before_observation_id: null, after_observation_id: null, detected_at: weatherRisks?.fetched_at ?? "", resolved_at: null, confirmed_at: null,
+  };
+  const recentDeviations = [...(currentFinding ? [currentFinding] : []), weatherFinding];
 
   const onlineCameraCount = cameras.filter((c) => c.stream_url).length;
 
   return (
     <div className="sk-dashboard">
-      {site.schedule_is_demo && (
+      {site?.schedule_is_demo && (
         <p className="sk-demo-note">Координаты и график — демонстрационные данные (см. «Календарный план»).</p>
       )}
 
@@ -409,123 +432,181 @@ export function DashboardPage() {
         </p>
       )}
 
+      <div className="sk-dashboard__overview">
+            <div className="sk-panel sk-current-stage">
+              <div className="sk-current-stage__head">
+                <h2>
+                  Текущий этап
+                  {isHistoryMode && <span className="sk-current-stage__badge">на дату снимка</span>}
+                </h2>
+                {!isHistoryMode && dashboard.current_stage && (
+                  <span className={`sk-current-stage__percent${isPaused ? " sk-current-stage__percent--paused" : ""}`}>{isPaused ? "Приостановлен" : dashboard.current_stage.progress_percent===null?"Нет замера":`${dashboard.current_stage.progress_percent??0}%`}</span>
+                )}
+              </div>
+              {isHistoryMode ? (
+                historyStageLoadedId!==selectedObservationId ? <p className="sk-empty-state">Загрузка этапа на дату снимка…</p> : historyStageInfo ? (
+                  <>
+                    <div className="sk-current-stage__title">{historyStageInfo.work_name}</div>
+                    <div className="sk-progress-bar">
+                      <div
+                        className="sk-progress-bar__fill"
+                        style={{ width: `${historyStageProgressPercent ?? 0}%` }}
+                      />
+                    </div>
+                    <div className="sk-current-stage__meta">
+                      <div><span>Начало</span><strong>{historyStageInfo.start_date.split("-").reverse().join(".")}</strong></div>
+                      <div><span>Завершение</span><strong>{historyStageInfo.end_date.split("-").reverse().join(".")}</strong></div>
+                    </div>
+                  </>
+                ) : (
+                  <p className="sk-empty-state">На эту дату активных этапов не было.</p>
+                )
+              ) : dashboard.current_stage ? (
+                <>
+                  <div className="sk-current-stage__title">{dashboard.current_stage.work_name}</div>
+                  {!isPaused && <div className="sk-progress-bar">
+                    <div
+                      className="sk-progress-bar__fill"
+                      style={{ width: `${dashboard.current_stage.progress_percent??0}%` }}
+                    />
+                  </div>}
+                  <div className="sk-current-stage__meta">
+                    <div><span>Начало</span><strong>{dashboard.current_stage.start_date.split("-").reverse().join(".")}</strong></div>
+                      <div><span>Завершение</span><strong>{dashboard.current_stage.end_date.split("-").reverse().join(".")}</strong></div>
+                  </div>
+                  {isPaused && <p className="sk-current-stage__paused-note">Последний этап по фото. Срок сдачи — приостановлено.</p>}
+                </>
+              ) : (
+                <p className="sk-empty-state">Нет активного этапа графика.</p>
+              )}
+            </div>
+
+            <div className="sk-panel sk-eq-panel">
+              <h2>Техника на площадке</h2>
+              <p className="sk-table__muted">По выбранному снимку</p>
+              {selectedObservationId&&!activeObservation ? <p className="sk-empty-state">{observationError ? "Разбор кадра недоступен" : "Загрузка разбора кадра…"}</p> : <EquipmentMiniGrid checks={quantityChecks} fallbackGroups={detectedGroups} />}
+            </div>
       <div className="sk-stat-cards">
         <StatCard
           icon={<CameraStatIcon />}
-          value={`${onlineCameraCount}/${cameras.length}`}
+          value={<>{onlineCameraCount}<small> / {cameras.length}</small></>}
           label="Камеры онлайн"
           hint={
             cameras.length === 0
               ? "Камеры не добавлены"
               : onlineCameraCount < cameras.length
-                ? `${cameras.length - onlineCameraCount} без трансляции — снимки по расписанию`
+                ? "Фото по расписанию"
                 : "Все камеры с трансляцией"
           }
           accent={cameras.length === 0 ? undefined : onlineCameraCount === cameras.length ? "ok" : "warning"}
         />
         <StatCard
           icon={<EquipmentIcon classKey="excavator" />}
-          value={dashboard.recognized_equipment_type_count}
-          label="Распознано типов техники"
-          hint="по последним снимкам камер"
+          value={selectedObservationId&&!activeObservation ? "…" : aiMarkupAvailable ? detectedGroups.length : dashboard.recognized_equipment_type_count}
+          label="Типы техники"
+          hint={aiMarkupAvailable ? "по разметке выбранного кадра" : "по последним снимкам камер"}
         />
         <StatCard
           icon={<WarningStatIcon />}
           value={openDeviations.length}
-          label="Отклонения (требуют внимания)"
-          hint={criticalOpenCount > 0 ? `в т.ч. критических: ${criticalOpenCount}` : "критических нет"}
+          label="Открытые отклонения"
+          hint={criticalOpenCount > 0 ? `Критических: ${criticalOpenCount}` : "Критических нет"}
           accent={openDeviations.length === 0 ? "ok" : criticalOpenCount > 0 ? "danger" : "warning"}
         />
         <StatCard
           icon={<ChartStatIcon />}
-          value={dashboard.plan_completion_percent !== null ? `${dashboard.plan_completion_percent}%` : "—"}
-          label="Выполнение плана"
-          hint={dashboard.current_stage?.work_name ?? "Нет активного этапа"}
+          value={dashboard.plan_completion_percent !== null ? <>{dashboard.plan_completion_percent.toLocaleString("ru-RU")}<small>%</small></> : "—"}
+          label="Готовность этапа"
+          hint={dashboard.plan_completion_percent===null?"Нужен подтверждённый замер":dashboard.current_stage?.work_name??"Нет активного этапа"}
         />
+      </div>
       </div>
 
       <div className="sk-dashboard__grid2">
         <div className="sk-dashboard__main2">
           <div className="sk-panel sk-camera-card">
-            {cameras.length > 0 && (
-              <div className="sk-camera-card__pills">
-                {cameras.map((camera) => {
-                  const online = Boolean(camera.stream_url);
-                  return (
-                    <button
-                      key={camera.camera_id}
-                      type="button"
-                      className={`sk-camera-card__pill${
-                        camera.camera_id === selectedCameraId ? " sk-camera-card__pill--active" : ""
-                      }`}
-                      onClick={() => setSelectedCameraId(camera.camera_id)}
-                    >
-                      <span
-                        className={`sk-camera-card__dot${online ? " sk-camera-card__dot--online" : ""}`}
-                        title={online ? "в сети" : "пока что не в сети (скринкаст)"}
-                      />
-                      {camera.name}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            <div className="sk-camera-card__toolbar">
+              {cameras.length > 0 && (
+                <div className="sk-camera-card__pills">
+                  {cameras.map((camera) => {
+                    const online = Boolean(camera.stream_url);
+                    return (
+                      <button
+                        key={camera.camera_id}
+                        type="button"
+                        className={`sk-camera-card__pill${
+                          camera.camera_id === selectedCameraId ? " sk-camera-card__pill--active" : ""
+                        }`}
+                        onClick={() => setSelectedCameraId(camera.camera_id)}
+                      >
+                        <span
+                          className={`sk-camera-card__dot${online ? " sk-camera-card__dot--online" : ""}`}
+                          title={online ? "в сети" : "пока что не в сети (скринкаст)"}
+                        />
+                        {camera.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
-            {selectedCamera && (
-              <div className="sk-camera-card__head">
-                <span
-                  className={`sk-camera-card__live-dot${
-                    selectedCamera.stream_url && !isHistoryMode ? " sk-camera-card__live-dot--on" : ""
-                  }`}
-                  aria-hidden="true"
-                  title={selectedCamera.stream_url && !isHistoryMode ? "В эфире" : "Снимки по расписанию"}
-                />
-                {displayedObservationSummary && (
-                  <span className="sk-camera-card__head-time">
-                    {new Date(displayedObservationSummary.created_at).toLocaleString("ru-RU")}
-                  </span>
-                )}
-                {isHistoryMode && <span className="sk-camera-card__history-badge">Архив</span>}
-                {cameraHistory && cameraHistory.length > 1 && (
-                  <div className="sk-camera-card__history-controls">
-                    <button
-                      type="button"
-                      className="sk-camera-card__history-btn"
-                      onClick={() => setHistoryIndex((i) => i + 1)}
-                      disabled={!hasOlderHistory}
-                      title="Предыдущий снимок"
-                    >
-                      ‹ Назад
-                    </button>
-                    <button
-                      type="button"
-                      className="sk-camera-card__history-btn"
-                      onClick={() => setHistoryIndex((i) => Math.max(0, i - 1))}
-                      disabled={!isHistoryMode}
-                      title="Следующий снимок"
-                    >
-                      Вперёд ›
-                    </button>
-                    {isHistoryMode && (
+              {selectedCamera && (
+                <>
+                  {displayedObservationSummary && (
+                    <span className="sk-camera-card__head-time">
+                      {new Date(displayedObservationSummary.observed_date ?? displayedObservationSummary.created_at).toLocaleDateString("ru-RU")}
+                    </span>
+                  )}
+                  {isHistoryMode && <span className="sk-camera-card__history-badge">Архив</span>}
+                  {cameraHistory && cameraHistory.length > 1 && (
+                    <div className="sk-camera-card__history-controls">
+                      <span className="sk-camera-card__frame-counter" aria-live="polite">Кадр {historyIndex + 1} / {cameraHistory.length}</span>
                       <button
                         type="button"
-                        className="sk-camera-card__history-btn sk-camera-card__history-btn--live"
-                        onClick={() => setHistoryIndex(0)}
+                        className="sk-camera-card__history-btn"
+                        onClick={() => setHistoryIndex((i) => i + 1)}
+                        disabled={!hasOlderHistory}
+                        title="Предыдущий снимок"
                       >
-                        Вернуться в онлайн
+                        ‹ Назад
                       </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+                      <button
+                        type="button"
+                        className="sk-camera-card__history-btn"
+                        onClick={() => setHistoryIndex((i) => Math.max(0, i - 1))}
+                        disabled={!isHistoryMode}
+                        title="Следующий снимок"
+                      >
+                        Вперёд ›
+                      </button>
+                      {isHistoryMode && (
+                        <button
+                          type="button"
+                          className="sk-camera-card__history-btn sk-camera-card__history-btn--live"
+                          onClick={() => setHistoryIndex(0)}
+                        >
+                          Вернуться в онлайн
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
 
-            <div className="sk-camera-card__frame" ref={setFrameRef}>
+            <div
+              className="sk-camera-card__frame"
+              ref={setFrameRef}
+              style={{ aspectRatio: imageSize ? `${imageSize.width} / ${imageSize.height}` : "16 / 9" }}
+            >
               {selectedCamera && displayedObservationSummary ? (
                 <>
                   <img
+                    key={`${selectedObservationId}:${imageAttempt}`}
                     className="sk-camera-card__image"
-                    src={getObservationImageUrl(projectId, displayedObservationSummary.observation_id)}
+                    src={`${getObservationImageUrl(projectId, displayedObservationSummary.observation_id)}${imageAttempt ? `&retry=${imageAttempt}` : ""}`}
+                    decoding="async"
+                    fetchPriority="high"
                     crossOrigin="use-credentials"
                     alt={
                       isHistoryMode
@@ -534,12 +615,17 @@ export function DashboardPage() {
                     }
                     onLoad={(event) => {
                       const target = event.currentTarget;
-                      setImageSize({ width: target.naturalWidth, height: target.naturalHeight });
+                      setLoadedImage({ id:displayedObservationSummary.observation_id, width: target.naturalWidth, height: target.naturalHeight });
+                      setImageErrorId(null);
                     }}
+                    onError={()=>setImageErrorId(displayedObservationSummary.observation_id)}
                   />
+                  {!imageSize && <div className="sk-camera-image-status" role="status">
+                    {imageErrorId===selectedObservationId ? <><span>Не удалось загрузить фото</span><button type="button" onClick={()=>{setImageErrorId(null);setImageAttempt(i=>i+1);}}>Повторить загрузку</button></> : <span>Загрузка фотографии…</span>}
+                  </div>}
                   {imageSize &&
                     displayRect &&
-                    observation?.detections.map((detection, index) => {
+                    visualDetections.map((detection, index) => {
                       const naturalWidth = imageSize.width || 1;
                       const naturalHeight = imageSize.height || 1;
                       const [x1, y1, x2, y2] = detection.bbox;
@@ -551,7 +637,7 @@ export function DashboardPage() {
                       return (
                         <div
                           key={index}
-                          className={`sk-bbox${detection.ambiguous ? " sk-bbox--ambiguous" : ""}${
+                          className={`sk-bbox${aiMarkupAvailable ? " sk-bbox--ai" : ""}${highlightedClass && highlightedClass !== detection.class_key ? " sk-bbox--dim" : ""}${highlightedClass === detection.class_key ? " sk-bbox--active" : ""}${detection.ambiguous ? " sk-bbox--ambiguous" : ""}${
                             !detection.in_taxonomy ? " sk-bbox--distractor" : ""
                           }`}
                           style={{
@@ -562,44 +648,23 @@ export function DashboardPage() {
                             borderColor: color,
                           }}
                           title={`${detection.label_ru} ${(detection.confidence * 100).toFixed(0)}%`}
+                          onMouseEnter={() => setEquipmentHover({ observationId: selectedObservationId!, classKey: detection.class_key })}
+                          onMouseLeave={() => setEquipmentHover(null)}
                         >
-                          <span className="sk-bbox__label" style={{ backgroundColor: color }}>
+                          <span className={`sk-bbox__label${y1 / naturalHeight < 0.07 ? " sk-bbox__label--inside" : ""}`} style={{ backgroundColor: color }}>
                             {detection.label_ru} {(detection.confidence * 100).toFixed(0)}%
                           </span>
                         </div>
                       );
                     })}
 
-                  {detectedGroups.length > 0 && (
-                    <div className="sk-camera-card__legend">
-                      <div className="sk-camera-card__legend-title">Обнаружено</div>
-                      {detectedGroups.map((g) => (
-                        <div key={g.classKey} className="sk-camera-card__legend-item">
-                          <span
-                            className="sk-camera-card__legend-dot"
-                            style={{ background: classColor(g.classKey) }}
-                            aria-hidden="true"
-                          />
-                          <span className="sk-camera-card__legend-label">
-                            {g.label}
-                            {g.ambiguous && (
-                              <sup
-                                className="sk-camera-card__legend-unsure"
-                                title="Похожий класс техники — уверенность снижена"
-                              >
-                                ?
-                              </sup>
-                            )}
-                          </span>
-                          <b className="sk-camera-card__legend-count">{g.count}</b>
-                        </div>
-                      ))}
-                    </div>
-                  )}
 
-                  {topCriticalDeviation && !isHistoryMode && (
-                    <div className="sk-camera-card__toast">
-                      <div className="sk-camera-card__toast-title">⚠ Нехватка техники</div>
+                  {aiMarkupAvailable && detectedGroups.length === 0 && <span className="sk-camera-card__ai-empty">Техника на этом кадре не обнаружена</span>}
+                  <div className="sk-camera-card__overlays">
+                  {topCriticalDeviation && !isHistoryMode && !aiMarkupAvailable && activeObservation && imageSize && (
+                    <details key={`${selectedObservationId}:${topCriticalDeviation.id}`} className="sk-camera-card__toast">
+                      <summary className="sk-camera-card__toast-title">Нехватка техники</summary>
+                      <div className="sk-camera-card__toast-body">
                       {toastShortfalls.length > 0 ? (
                         <ul className="sk-camera-card__toast-list">
                           {toastShortfalls.map((c) => (
@@ -623,8 +688,40 @@ export function DashboardPage() {
                       <Link to={`/projects/${projectId}/notifications`} className="sk-camera-card__toast-link">
                         Подробнее →
                       </Link>
+                      </div>
+                    </details>
+                  )}
+                  {detectedGroups.length > 0 && (
+                    <div className="sk-camera-card__legend">
+                      <div className="sk-camera-card__legend-title">Техника на кадре</div>
+                      {detectedGroups.map((g) => (
+                        <button type="button" key={g.classKey} className={`sk-camera-card__legend-item${highlightedClass === g.classKey ? " sk-camera-card__legend-item--active" : ""}`}
+                          onMouseEnter={() => setEquipmentHover({ observationId: selectedObservationId!, classKey: g.classKey })}
+                          onMouseLeave={() => setEquipmentHover(null)}
+                          onFocus={() => setEquipmentHover({ observationId: selectedObservationId!, classKey: g.classKey })}
+                          onBlur={() => setEquipmentHover(null)}>
+                          <span
+                            className="sk-camera-card__legend-dot"
+                            style={{ background: classColor(g.classKey) }}
+                            aria-hidden="true"
+                          />
+                          <span className="sk-camera-card__legend-label">
+                            {g.label}
+                            {g.ambiguous && (
+                              <sup
+                                className="sk-camera-card__legend-unsure"
+                                title="Похожий класс техники — уверенность снижена"
+                              >
+                                ?
+                              </sup>
+                            )}
+                          </span>
+                          <b className="sk-camera-card__legend-count">{g.count}</b>
+                        </button>
+                      ))}
                     </div>
                   )}
+                  </div>
                 </>
               ) : (
                 <div className="sk-camera-card__empty">
@@ -641,73 +738,9 @@ export function DashboardPage() {
           </div>
 
           <div className="sk-dashboard__secondary-row">
-            <div className="sk-panel sk-current-stage">
-              <div className="sk-current-stage__head">
-                <h2>
-                  Текущий этап
-                  {isHistoryMode && <span className="sk-current-stage__badge">на дату снимка</span>}
-                </h2>
-                {!isHistoryMode && dashboard.current_stage && (
-                  <span className="sk-current-stage__percent">{dashboard.current_stage.progress_percent}%</span>
-                )}
-              </div>
-              {isHistoryMode ? (
-                historyStageInfo ? (
-                  <>
-                    <div className="sk-current-stage__title">{historyStageInfo.work_name}</div>
-                    <div className="sk-progress-bar">
-                      <div
-                        className="sk-progress-bar__fill"
-                        style={{ width: `${historyStageProgressPercent ?? 0}%` }}
-                      />
-                    </div>
-                    <div className="sk-current-stage__meta">
-                      {historyStageInfo.start_date} – {historyStageInfo.end_date}
-                    </div>
-                  </>
-                ) : (
-                  <p className="sk-empty-state">На эту дату активных этапов не было.</p>
-                )
-              ) : dashboard.current_stage ? (
-                <>
-                  <div className="sk-current-stage__title">{dashboard.current_stage.work_name}</div>
-                  <div className="sk-progress-bar">
-                    <div
-                      className="sk-progress-bar__fill"
-                      style={{ width: `${dashboard.current_stage.progress_percent}%` }}
-                    />
-                  </div>
-                  <div className="sk-current-stage__meta">
-                    {dashboard.current_stage.start_date} – {dashboard.current_stage.end_date}
-                  </div>
-                </>
-              ) : (
-                <p className="sk-empty-state">Нет активного этапа графика.</p>
-              )}
-            </div>
-
-            <div className="sk-panel sk-eq-panel">
-              <h2>Техника на площадке</h2>
-              <EquipmentMiniGrid checks={quantityChecks} fallbackGroups={detectedGroups} />
-            </div>
-
-            <div className="sk-panel sk-deviation-chart-panel">
-              <div className="sk-current-stage__head">
-                <h2>Динамика отклонений</h2>
-                {deviationsByDayTotal > 0 && (
-                  <span className="sk-current-stage__percent sk-current-stage__percent--danger">
-                    {deviationsByDayTotal}
-                  </span>
-                )}
-              </div>
-              {deviationsByDay.length === 0 || deviationsByDay.every((d) => d.value === 0) ? (
-                <p className="sk-empty-state">Отклонений не зафиксировано.</p>
-              ) : (
-                <MiniBarChart data={deviationsByDay} />
-              )}
-              <Link to={`/projects/${projectId}/analytics`} className="sk-deviation-panel__link">
-                Подробная аналитика →
-              </Link>
+            <div className="sk-panel sk-dashboard-schedule">
+              <div className="sk-dashboard-schedule__head"><h2>Календарный план</h2><Link to={`/projects/${projectId}/schedule`}>Открыть полностью ↗</Link></div>
+              {scheduleNetwork?.stages.length ? <DashboardGantt stages={scheduleNetwork.stages} currentStageId={dashboard.current_stage?.stage_id} paused={isPaused} /> : <p className="sk-empty-state">{scheduleNetwork ? "Календарный план пока не заполнен." : "План загружается. Полная версия доступна по ссылке выше."}</p>}
             </div>
           </div>
         </div>
@@ -724,29 +757,48 @@ export function DashboardPage() {
               </Link>
             </div>
             {recentDeviations.length === 0 && <p className="sk-empty-state">Отклонений не зафиксировано.</p>}
-            <ul className="sk-deviation-list">
-              {recentDeviations.map((item) => (
+            <ul className="sk-deviation-list" ref={setDeviationListRef} tabIndex={0} aria-label="Карточки отклонений. Прокрутка переключает карточку"
+              onScroll={(event) => setDeviationIndex(Math.min(recentDeviations.length - 1, Math.max(0, Math.round(event.currentTarget.scrollTop / (event.currentTarget.clientHeight + 12)))))}>
+
+              {recentDeviations.map((item) => {
+                const shortfall = item.kind === "quantity_shortfall" && item.before_observation_id === selectedObservationId && item.stage_id === matchedStage?.stage_id
+                  ? quantityChecks.find((q) => !q.satisfied && (item.equipment.includes(q.label_ru) || item.equipment.includes(q.class_key))) : undefined;
+                const needsEquipmentCheck = ["quantity_shortfall", "missing_equipment"].includes(item.kind);
+                return (
                 <li key={item.id}>
                   <Link
-                    to={`/projects/${projectId}/notifications`}
+                    to={`/projects/${projectId}/${item.kind === "weather_risk" ? "forecast" : `notifications/${item.id}`}`}
                     className={`sk-deviation-item sk-deviation-item--${item.severity}`}
                   >
                     <div className="sk-deviation-item__top">
                       <span className="sk-deviation-item__severity">
-                        {SEVERITY_ICON[item.severity] ?? "•"} {item.severity_label_ru}
+                        {item.severity_label_ru}
                       </span>
+                      <span className="sk-deviation-item__status">{item.status_label_ru}</span>
                       <span className="sk-deviation-item__time">
-                        {new Date(item.detected_at).toLocaleString("ru-RU", {
+                        {item.detected_at ? new Date(item.detected_at).toLocaleString("ru-RU", {
                           day: "2-digit",
                           month: "2-digit",
                           hour: "2-digit",
                           minute: "2-digit",
-                        })}
+                        }) : "Прогноз"}
                       </span>
                     </div>
                     <div className="sk-deviation-item__title">{item.title}</div>
+                    <p className="sk-deviation-item__fact">{item.message}</p>
+                    {shortfall && <div className="sk-deviation-item__quantities" aria-label="Сравнение количества техники">
+                      <div><span>По плану</span><strong>{shortfall.required_qty}</strong></div>
+                      <div><span>На снимке</span><strong>{shortfall.actual_qty}</strong></div>
+                      <div className="sk-deviation-item__deficit"><span>Не хватает</span><strong>{shortfall.required_qty - shortfall.actual_qty}</strong></div>
+                    </div>}
+                    {item.kind === "weather_risk" && <>
+                      <div className="sk-deviation-item__weather-note"><strong>{weatherPeriod ? "Условие по прогнозу" : weatherRisks?.status === "ok" && !weatherRisks.is_stale ? "Прогноз не подтверждает превышение порогов" : "Актуальные погодные риски не подтверждены"}</strong><p>{weatherPeriod ? `Ожидается ${weatherPeriod.peak_value} ${weatherPeriod.units}; порог правила — ${weatherPeriod.threshold} ${weatherPeriod.units}.` : "Погодный сценарий не учитывается как открытое нарушение. Факт остановки работ не установлен."}</p></div>
+                      <div className="sk-deviation-item__check sk-deviation-item__check--weather"><span>Что проверить</span><p>Перед сменой сверить прогноз и ограничения для подъёмных и бетонных работ с регламентом площадки.</p></div>
+                    </>}
+                    {needsEquipmentCheck && <div className="sk-deviation-item__check"><span>Что проверить</span><p>Уточнить наличие техники за пределами обзора камеры и её участие в работах этапа.</p></div>}
+                    <div className="sk-deviation-item__evidence">{item.kind === "weather_risk" ? "Погодный контроль · потенциальное влияние на график" : <>По {item.occurrence_count === 1 ? "одному снимку" : `${item.occurrence_count} снимкам`}{item.is_on_critical_path ? " · Этап на критическом пути" : ""}</>}</div>
                     <div className="sk-deviation-item__sub">
-                      {item.work_name ?? "Этап не указан"} · {item.zone_name}
+                      <span>Этап</span> {item.work_name ?? "Не указан"}<br /><span>Зона</span> {item.zone_name}
                     </div>
                     <div className="sk-deviation-item__bottom">
                       {item.before_observation_id && (
@@ -754,12 +806,15 @@ export function DashboardPage() {
                           className="sk-deviation-item__thumb"
                           src={getObservationImageUrl(projectId, item.before_observation_id)}
                           crossOrigin="use-credentials"
+                          loading="lazy"
+                          decoding="async"
                           alt=""
                           aria-hidden="true"
                         />
                       )}
-                      <span className="sk-deviation-item__equipment">
-                        {item.equipment.length > 0 ? item.equipment.join(", ") : "—"}
+                      <span className="sk-deviation-item__equipment" title={`${item.work_name ?? "Этап не указан"} · ${item.zone_name}`}>
+                        <strong>{item.kind === "weather_risk" ? "Прогноз и факторы риска" : "Снимок и подробности"}</strong>
+                        <span>{item.work_name ?? item.zone_name}</span>
                       </span>
                       <span className="sk-deviation-item__chevron" aria-hidden="true">
                         ›
@@ -767,11 +822,14 @@ export function DashboardPage() {
                     </div>
                   </Link>
                 </li>
-              ))}
+              );})}
             </ul>
-            <Link to={`/projects/${projectId}/notifications`} className="sk-deviation-panel__link">
-              Показать все отклонения →
-            </Link>
+            <div className="sk-deviation-navigation" aria-label="Переключение карточек">
+              <button type="button" aria-label="Предыдущее отклонение" disabled={deviationIndex === 0} onClick={() => { const list = deviationListRef.current; if (list) list.scrollBy({ top: -(list.clientHeight + 12), behavior: "smooth" }); }}>←</button>
+              <span aria-live="polite">{deviationIndex + 1} / {recentDeviations.length}</span>
+              <button type="button" aria-label="Следующее отклонение" disabled={deviationIndex >= recentDeviations.length - 1} onClick={() => { const list = deviationListRef.current; if (list) list.scrollBy({ top: list.clientHeight + 12, behavior: "smooth" }); }}>→</button>
+              <Link to={`/projects/${projectId}/notifications`}>Все отклонения</Link>
+            </div>
           </aside>
 
           <div className="sk-panel sk-map-panel">
@@ -781,7 +839,7 @@ export function DashboardPage() {
                 Открыть карту →
               </Link>
             </div>
-            <MiniSiteMap features={site.geojson.features} zoneStatus={zoneStatus} center={mapCenter} />
+            {site ? <MiniSiteMap features={site.geojson.features} zoneStatus={zoneStatus} center={mapCenter} /> : <p className="sk-empty-state">Карта пока недоступна. Остальные данные проекта доступны.</p>}
           </div>
         </div>
       </div>

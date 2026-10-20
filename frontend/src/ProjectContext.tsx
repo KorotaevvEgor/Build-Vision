@@ -66,7 +66,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     );
   }
   if (error) {
-    return <div className="sk-panel sk-panel--error">Не удалось загрузить проект: {error}</div>;
+    return <div className="sk-panel sk-panel--error">Не удалось загрузить проект: {error} <button type="button" onClick={()=>setReloadToken(t=>t+1)}>Повторить загрузку</button></div>;
   }
   if (!project) {
     return <div className="sk-panel">Загрузка проекта…</div>;

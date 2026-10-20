@@ -215,24 +215,26 @@ def decide_activity(
                     "Машина сместилась по сравнению с предыдущим снимком камеры",
                 )
         if motionless_frames >= IDLE_FRAMES_REQUIRED:
+            if class_key in {'mobile_crane','tower_crane','crane_manipulator','concrete_pump'}:
+                return ActivityVerdict(ACTIVITY_UNKNOWN, 'Неподвижность основания крана или насоса не доказывает простой')
             return ActivityVerdict(
                 ACTIVITY_IDLE,
-                f"Машина не сдвинулась на протяжении {motionless_frames} предыдущих снимков камеры",
+                f"Возможный простой: положение не изменилось на {motionless_frames} сопоставимых снимках; нужна проверка операции",
             )
 
     if zone_hit is not None:
         if zone_hit.zone_kind == "parking":
             return ActivityVerdict(
-                ACTIVITY_IDLE, f"Техника находится в зоне отстоя «{zone_hit.zone_name}»"
+                ACTIVITY_IDLE, f"Признак возможного простоя: зона отстоя «{zone_hit.zone_name}»"
             )
         if zone_hit.zone_kind == "entrance":
             return ActivityVerdict(
                 ACTIVITY_IDLE,
-                f"Техника находится в зоне въезда «{zone_hit.zone_name}», а не на рабочем участке",
+                f"Техника у въезда «{zone_hit.zone_name}»; занятость в работе требует проверки",
             )
         if zone_hit.zone_kind == "work":
             return ActivityVerdict(
-                ACTIVITY_WORKING, f"Техника находится в рабочей зоне «{zone_hit.zone_name}»"
+                ACTIVITY_WORKING, f"Признак участия в работе: участок «{zone_hit.zone_name}»; выполнение операции не подтверждено"
             )
 
     if zones_defined:

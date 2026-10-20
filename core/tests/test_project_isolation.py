@@ -169,14 +169,14 @@ class ProjectIsolationTests(TransactionTestCase):
 
     def test_only_admin_can_create_project(self):
         client = self.login("member_a_iso")
-        result = client.post("/api/projects", json={"name": "Чужой проект"})
+        result = client.post("/api/projects", data={"name": "Чужой проект"})
         self.assertEqual(result.status_code, 403)
 
     def test_admin_create_project_with_members_transactional(self):
         client = self.login("admin_iso")
         result = client.post(
             "/api/projects",
-            json={
+            data={
                 "name": "Новый проект",
                 "address": "ул. Строителей, 10",
                 "status": "preparation",
@@ -195,12 +195,12 @@ class ProjectIsolationTests(TransactionTestCase):
 
     def test_create_project_rejects_invalid_status(self):
         client = self.login("admin_iso")
-        result = client.post("/api/projects", json={"name": "X", "status": "not-a-real-status"})
+        result = client.post("/api/projects", data={"name": "X", "status": "not-a-real-status"})
         self.assertEqual(result.status_code, 400)
 
     def test_create_project_rejects_unknown_member_id(self):
         client = self.login("admin_iso")
-        result = client.post("/api/projects", json={"name": "Y", "member_user_ids": [999999]})
+        result = client.post("/api/projects", data={"name": "Y", "member_user_ids": [999999]})
         self.assertEqual(result.status_code, 400)
         self.assertFalse(ConstructionSite.objects.filter(name="Y").exists())
 
@@ -208,7 +208,7 @@ class ProjectIsolationTests(TransactionTestCase):
 
     def test_new_empty_project_has_no_demo_data(self):
         client = self.login("admin_iso")
-        created = client.post("/api/projects", json={"name": "Пустой проект"}).json()["project"]
+        created = client.post("/api/projects", data={"name": "Пустой проект"}).json()["project"]
         project_id = created["project_id"]
 
         site_result = client.get(f"/api/projects/{project_id}/site").json()

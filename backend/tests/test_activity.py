@@ -145,7 +145,7 @@ def test_motionless_across_frames_means_idle_even_in_work_zone() -> None:
     same_place = [{"class_key": "excavator", "bbox": [602, 101, 702, 301]}]
     verdict = activity.decide_activity(bbox, "excavator", hit, [same_place, same_place])
     assert verdict.activity == activity.ACTIVITY_IDLE
-    assert "не сдвинулась" in verdict.reason
+    assert "Возможный простой" in verdict.reason
 
 
 def test_single_motionless_frame_is_not_enough_for_idle() -> None:
@@ -168,3 +168,9 @@ def test_machine_of_other_class_is_not_matched_between_frames() -> None:
     bbox = [600, 100, 700, 300]
     previous = [{"class_key": "dump_truck", "bbox": [600, 100, 700, 300]}]
     assert activity.find_same_machine(bbox, "excavator", previous) is None
+
+
+def test_stationary_crane_is_not_proof_of_idle():
+    frame=[{"class_key":"mobile_crane","bbox":[600,100,700,300]}]
+    verdict=activity.decide_activity([600,100,700,300],"mobile_crane",None,[frame,frame])
+    assert verdict.activity==activity.ACTIVITY_UNKNOWN

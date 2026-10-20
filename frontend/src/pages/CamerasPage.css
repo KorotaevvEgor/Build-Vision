@@ -220,3 +220,34 @@ a.sk-camera-tile:hover {
   text-decoration: none;
   display: inline-block;
 }
+
+.sk-cameras-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start;margin-top:24px}.sk-cameras-workspace__list,.sk-cameras-workspace__zones{min-width:0}.sk-cameras-workspace .sk-cameras-grid{grid-template-columns:minmax(0,1fr);margin-top:0}.sk-cameras-workspace .sk-camera-tile__media{height:auto;aspect-ratio:16/9}.sk-camera-tile__select{border:0;padding:0;display:block;text-align:left;color:inherit;background:none;cursor:pointer;width:100%}.sk-camera-tile--selected{border-color:var(--sk-accent);box-shadow:0 0 0 1px var(--sk-accent)}.sk-cameras-workspace .sk-camera-tile__footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.sk-camera-tile__footer>a{font-size:11px;color:var(--sk-accent);text-decoration:none}.sk-zone-editor--embedded>h2{margin-top:0;font-size:20px}.sk-zone-editor--embedded .sk-zone-editor__grid{grid-template-columns:minmax(0,1fr)}.sk-zone-editor--embedded .sk-zone-editor__intro{font-size:11px;line-height:1.6}.sk-zone-editor--embedded{padding:20px;border:1px solid var(--sk-border);border-radius:var(--sk-radius-panel);background:var(--sk-surface);min-width:0}.sk-zone-editor--embedded .sk-panel{min-width:0}.sk-zone-editor--embedded .sk-zone-editor__frame{min-width:0}.sk-zone-editor--embedded .sk-zone-editor__image{max-width:100%}
+@media(max-width:1050px){.sk-cameras-workspace{grid-template-columns:minmax(0,1fr);gap:20px}.sk-zone-editor--embedded{padding:14px}}
+
+.sk-cameras-workspace{align-items:stretch}.sk-cameras-list-card,.sk-zones-card{background:var(--sk-surface);border:1px solid var(--sk-border);border-radius:var(--sk-radius-panel);padding:20px;min-width:0;box-sizing:border-box}.sk-cameras-list-card>header h2,.sk-zones-card h2{font-size:20px;margin:0}.sk-cameras-list-card>header p,.sk-zones-card header p{font-size:11px;color:var(--sk-text-muted);margin:8px 0 18px;line-height:1.5}.sk-cameras-list-card .sk-camera-tile{box-shadow:none}.sk-cameras-workspace__zones{display:flex;flex-direction:column}.sk-zones-card{display:flex;flex-direction:column;flex:1;gap:16px}.sk-zones-card>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.sk-zones-card header p{margin-bottom:0}.sk-zones-card__count{font-size:11px;white-space:nowrap;border:1px solid var(--sk-border);border-radius:6px;padding:5px 8px;color:var(--sk-text-muted)}.sk-zones-card__preview{position:relative;display:block;border-radius:10px;overflow:hidden;background:var(--sk-surface-muted);color:#fff}.sk-zones-card__preview img{display:block;width:100%;height:auto}.sk-zones-card__preview svg{position:absolute;inset:0;width:100%;height:100%}.sk-zones-card__polygon{fill:#34d39924;stroke:#34d399;stroke-width:2;vector-effect:non-scaling-stroke}.sk-zones-card__polygon--danger{fill:#ef444424;stroke:#ef4444}.sk-zones-card__polygon--parking{fill:#3b82f624;stroke:#3b82f6}.sk-zones-card__polygon--uncontrolled{fill:#94a3b824;stroke:#94a3b8}.sk-zones-card__overlay{position:absolute;bottom:0;left:0;right:0;padding:25px 14px 12px;background:linear-gradient(transparent,#071020bb);font-size:11px}.sk-zones-card__empty{padding:60px 20px;text-align:center;color:var(--sk-text-muted);font-size:12px}.sk-zones-card__body ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.sk-zones-card__body li{display:flex;justify-content:space-between;gap:12px;font-size:11px;padding:8px 0;border-bottom:1px solid var(--sk-border)}.sk-zones-card__body small{color:var(--sk-text-muted);font-size:10px}.sk-zones-card__body p,.sk-zones-card footer p{font-size:11px;color:var(--sk-text-muted);line-height:1.5;margin:0}.sk-zones-card footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:15px;border-top:1px solid var(--sk-border);padding-top:15px;flex-wrap:wrap}.sk-zones-card footer .sk-button{font-size:11px;white-space:nowrap;text-decoration:none}.sk-zones-camera-select:empty{display:none}.sk-zones-camera-select label{display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:12px}.sk-zones-camera-select select{background:var(--sk-surface);color:var(--sk-text);border:1px solid var(--sk-border);padding:8px;border-radius:6px;min-width:0;max-width:100%}@media(max-width:600px){.sk-cameras-list-card,.sk-zones-card{padding:14px}.sk-zones-card__body li{flex-wrap:wrap}}
+
+.sk-camera-tile__footer > .sk-button{color:var(--sk-button-primary-text,#fff);font-size:11px;white-space:nowrap;text-decoration:none}
+
+/* Keep the camera action and zone action on the same bottom baseline. */
+.sk-cameras-list-card{display:flex;flex-direction:column}
+.sk-cameras-list-card>.sk-cameras-grid{flex:1;align-items:stretch}
+.sk-cameras-list-card .sk-camera-tile{border:0;background:transparent;overflow:visible}
+.sk-cameras-list-card .sk-camera-tile__footer{margin-top:auto;padding:15px 0 0;border-top:1px solid var(--sk-border);flex-direction:column;align-items:flex-start;gap:12px}
+.sk-cameras-list-card .sk-camera-tile__time{order:-1;line-height:1.5}
+.sk-cameras-list-card .sk-camera-tile__select{margin-bottom:16px;border-radius:10px;overflow:hidden}
+.sk-cameras-workspace>.sk-cameras-workspace__zones .sk-zones-card>footer{flex-direction:column;align-items:flex-start;gap:12px}
+
+.sk-camera-history{margin-top:24px}
+.sk-camera-history__heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px}
+.sk-camera-history__heading h2{margin:0;font-size:18px}
+.sk-camera-history__heading>span{font-size:12px;color:var(--sk-text-muted)}
+.sk-camera-history__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:16px}
+.sk-camera-history__frame .sk-camera-tile__media{height:auto;aspect-ratio:16/9}
+.sk-camera-history__frame .sk-camera-tile__img{object-fit:contain}
+.sk-camera-history__frame .sk-camera-tile__footer{padding:12px;line-height:1.5}
+.sk-camera-history__frame:focus-visible{outline:2px solid var(--sk-accent);outline-offset:3px}
+@media(max-width:600px){.sk-camera-history__grid{grid-template-columns:minmax(0,1fr)}.sk-camera-history{padding:14px}.sk-camera-detail__actions .sk-button{font-size:12px}}
+
+.sk-camera-history__frame .sk-camera-tile__time{color:var(--sk-text-muted)}
+
+.sk-camera-tile__details{margin-bottom:16px}.sk-camera-frame-count{font-size:12px;font-weight:600;color:var(--sk-text);font-variant-numeric:tabular-nums}.sk-cameras-list-card .sk-camera-tile__footer p{font-size:11px;line-height:1.5;color:var(--sk-text-muted);margin:0}.sk-camera-tile__details small{text-align:right}

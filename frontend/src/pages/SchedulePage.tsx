@@ -38,6 +38,7 @@ import { ProjectDynamicsChart, type DynamicsPoint } from "../components/ProjectD
 import { DelayFactorsDonut } from "../components/DelayFactorsDonut";
 import { StageEditForm } from "../components/StageEditForm";
 import "./SchedulePage.css";
+import { PausedSchedulePage } from "./PausedSchedulePage";
 
 const RISK_KEY_LABEL: Record<string, string> = {
   missing_equipment: "Недостаток техники",
@@ -75,6 +76,21 @@ function formatShortDate(iso: string): string {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
 }
 
+/**
+ * Демонстрационный «Прогнозный перерасход» на диаграмме: для идущего этапа «… Монолитные работы»
+ * рисуется небольшой полосатый отрезок за плановым сроком, чтобы на показе была видна сама механика.
+ * Только визуальный оверлей: расчёт срока сдачи, БД и API не затрагиваются. Реальный перерасход,
+ * если он уже посчитан бэкендом (прогноз позже плана больше чем на день), всегда имеет приоритет.
+ */
+const DEMO_OVERRUN_STAGE_PATTERN = /монолитные работы/i;
+const DEMO_OVERRUN_DAYS = 14;
+
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(iso);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 /** Склонение дней: 1 день, 2 дня, 5 дней. */
 function plural(days: number): string {
   const n = Math.abs(days) % 100;
@@ -109,26 +125,77 @@ function stateColor(state: string): string {
   return STATE_COLOR[state] ?? "var(--sk-text-faint)";
 }
 
-/** Проходит по датам плана и строит сегменты месяцев для шапки диаграммы — без сторонних библиотек дат. */
-function monthSegments(range: { start: Date; end: Date }): { label: string; days: number }[] {
-  const months: { label: string; days: number }[] = [];
+const SHORT_MONTHS_RU = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
+
+/** Компактная подпись для группы из нескольких месяцев — короче полного названия одного месяца,
+ * чтобы влезать в ту же узкую колонку диапазон из нескольких месяцев. */
+function monthRangeLabel(start: Date, end: Date): string {
+  const startMonth = SHORT_MONTHS_RU[start.getMonth()];
+  const endMonth = SHORT_MONTHS_RU[end.getMonth()];
+  const startYear = start.getFullYear();
+  const endYear = end.getFullYear();
+  if (startYear !== endYear) return `${startMonth} ${startYear} – ${endMonth} ${endYear}`;
+  if (start.getMonth() === end.getMonth()) return `${startMonth} ${startYear}`;
+  return `${startMonth}–${endMonth} ${startYear}`;
+}
+
+/**
+ * Проходит по датам плана и строит сегменты для шапки диаграммы — без сторонних библиотек дат.
+ * При длинном горизонте (много месяцев) каждая отдельная колонка становится слишком узкой, чтобы
+ * вместить полное название месяца с годом — тогда соседние подписи налезают друг на друга и шапка
+ * выглядит кашей. Вместо этого несколько соседних месяцев объединяются в один широкий сегмент с короткой
+ * подписью-диапазоном (см. groupSize ниже, подбирается по общему числу месяцев в горизонте).
+ * Позиции/ширины полос на диаграмме не затронуты — они считаются от абсолютных дней (barPosition),
+ * а не от этих сегментов — группировка меняет только подписи в шапке.
+ */
+function monthSegments(range: { start: Date; end: Date }, groupSize: number): { label: string; days: number }[] {
+  const groups: { label: string; days: number }[] = [];
   let cursor = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
   const rangeEndExclusive = new Date(range.end.getTime() + 86_400_000);
   while (cursor.getTime() < rangeEndExclusive.getTime()) {
-    const nextMonth = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-    const segStart = cursor.getTime() > range.start.getTime() ? cursor : range.start;
-    const segEndExclusive = nextMonth.getTime() < rangeEndExclusive.getTime() ? nextMonth : rangeEndExclusive;
-    const days = Math.max(1, Math.round((segEndExclusive.getTime() - segStart.getTime()) / 86_400_000));
-    const label = cursor.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
-    months.push({ label: label.charAt(0).toUpperCase() + label.slice(1), days });
-    cursor = nextMonth;
+    const groupFirstMonth = cursor;
+    let groupLastMonth = cursor;
+    let days = 0;
+    for (let i = 0; i < groupSize && cursor.getTime() < rangeEndExclusive.getTime(); i++) {
+      const nextMonth = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+      const segStart = cursor.getTime() > range.start.getTime() ? cursor : range.start;
+      const segEndExclusive = nextMonth.getTime() < rangeEndExclusive.getTime() ? nextMonth : rangeEndExclusive;
+      days += Math.max(1, Math.round((segEndExclusive.getTime() - segStart.getTime()) / 86_400_000));
+      groupLastMonth = cursor;
+      cursor = nextMonth;
+    }
+    const label =
+      groupSize === 1
+        ? (() => {
+            const full = groupFirstMonth.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+            return full.charAt(0).toUpperCase() + full.slice(1);
+          })()
+        : monthRangeLabel(groupFirstMonth, groupLastMonth);
+    groups.push({ label, days });
   }
-  return months;
+  return groups;
 }
+
+/** Родительный падеж множественного числа классов техники — «Не хватает самосвалов». */
+const EQUIPMENT_GENITIVE_PLURAL: Record<string, string> = {
+  dump_truck: "самосвалов",
+  excavator: "экскаваторов",
+  mobile_crane: "автокранов",
+  concrete_mixer: "автобетоносмесителей",
+  bulldozer: "бульдозеров",
+  road_roller: "катков",
+  truck: "грузовиков",
+  crane_manipulator: "кранов-манипуляторов",
+};
 
 const STAGE_KPI_LABELS = ["Всего этапов", "Выполнено", "В работе", "Требуют внимания"] as const;
 
 export function SchedulePage() {
+  const { project } = useProject();
+  return project.status === "paused" ? <PausedSchedulePage /> : <ActiveSchedulePage />;
+}
+
+function ActiveSchedulePage() {
   const { projectId } = useProject();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -310,7 +377,24 @@ export function SchedulePage() {
     return { start: new Date(Math.min(...starts)), end: new Date(Math.max(...ends)) };
   }, [network]);
 
-  const months = useMemo(() => (timelineRange ? monthSegments(timelineRange) : []), [timelineRange]);
+  // При длинном горизонте (много месяцев, например из-за сильно сдвинутого прогноза) каждый отдельный
+  // месяц слишком узкий для своего названия — подписи налезают друг на друга. Вместо этого соседние месяцы
+  // объединяются в более широкие группы (2–3 месяца) с короткой подписью-диапазоном.
+  const monthGroupSize = useMemo(() => {
+    if (!timelineRange) return 1;
+    const totalMonths =
+      (timelineRange.end.getFullYear() - timelineRange.start.getFullYear()) * 12 +
+      (timelineRange.end.getMonth() - timelineRange.start.getMonth()) +
+      1;
+    if (totalMonths > 20) return 3;
+    if (totalMonths > 10) return 2;
+    return 1;
+  }, [timelineRange]);
+
+  const months = useMemo(
+    () => (timelineRange ? monthSegments(timelineRange, monthGroupSize) : []),
+    [timelineRange, monthGroupSize],
+  );
 
   // Иерархическая нумерация разделов (1., 2., …) и вложенных работ (1.1, 1.2, …) — как в макете.
   // Стадии уже приходят от бэкенда в порядке обхода дерева (родитель перед детьми), поэтому
@@ -428,6 +512,10 @@ export function SchedulePage() {
     ?.quantity_checks;
   const stageRule = selectedStageId ? rules.stage_rules[selectedStageId] : null;
   const unsatisfiedChecks = stageQuantityChecks?.filter((c) => !c.satisfied) ?? [];
+  // Норма по технике берётся из текущего правила этапа: снимок прошлого анализа может хранить устаревшее число,
+  // а в одном экране «из N» не должно расходиться между вкладками.
+  const requiredOf = (check: { class_key: string; required_qty: number }): number =>
+    stageRule?.required_quantities[check.class_key] ?? check.required_qty;
 
   const unverified = network.stages.filter((s) => network.unverified_stage_ids.includes(s.stage_id));
   const shifting = network.stages.filter((s) => s.shifts_project_finish);
@@ -484,6 +572,12 @@ export function SchedulePage() {
   const inProgressCount = leafStages.filter((s) => s.state === "in_progress").length;
   const attentionCount = leafStages.filter((s) => s.state === "overdue" || s.state === "unverified").length;
   const stageKpis = [leafStages.length, doneCount, inProgressCount, attentionCount];
+  // Работа, которая идёт прямо сейчас (для демо-риска погоды в карточке «Погодные риски»).
+  const currentWorkName = leafStages.find((s) => s.state === "in_progress")?.work_name;
+  // Лента этапов под графиком «Динамика проекта».
+  const dynamicsStages = [...leafStages]
+    .sort((a, b) => new Date(a.planned_start_date).getTime() - new Date(b.planned_start_date).getTime())
+    .map((s) => ({ name: s.work_name, start: s.planned_start_date, end: s.planned_end_date }));
 
   const upcoming = [...leafStages]
     .filter((s) => new Date(s.planned_end_date) >= today && s.state !== "done_on_time")
@@ -696,9 +790,21 @@ export function SchedulePage() {
                         <div className="sk-gantt-timeline-rows">
                           {network.stages.map((stage) => {
                             const planned = barPosition(stage.planned_start_date, stage.planned_end_date);
+                            const realOverrunDays = dayDiff(
+                              new Date(stage.planned_end_date),
+                              new Date(stage.projected_finish_date),
+                            );
+                            const isDemoOverrun =
+                              !stage.is_summary &&
+                              stage.state === "in_progress" &&
+                              realOverrunDays <= 1 &&
+                              DEMO_OVERRUN_STAGE_PATTERN.test(stage.work_name);
+                            const overrunEnd = isDemoOverrun
+                              ? addDaysIso(stage.planned_end_date, DEMO_OVERRUN_DAYS)
+                              : stage.projected_finish_date;
                             const overrun =
-                              stage.projected_finish_date > stage.planned_end_date
-                                ? barPosition(stage.planned_end_date, stage.projected_finish_date)
+                              overrunEnd > stage.planned_end_date
+                                ? barPosition(stage.planned_end_date, overrunEnd)
                                 : null;
                             const color = stateColor(stage.state);
                             return (
@@ -719,7 +825,11 @@ export function SchedulePage() {
                                   <span
                                     className="sk-gantt-bar sk-gantt-bar--overrun"
                                     style={{ left: `${overrun.left}%`, width: `${overrun.width}%` }}
-                                    title={`Прогноз окончания ${formatDate(stage.projected_finish_date)}`}
+                                    title={
+                                      isDemoOverrun
+                                        ? `Прогнозный перерасход (демонстрация): +${DEMO_OVERRUN_DAYS} ${plural(DEMO_OVERRUN_DAYS)}, окончание ${formatDate(overrunEnd)}`
+                                        : `Прогноз окончания ${formatDate(stage.projected_finish_date)}`
+                                    }
                                   />
                                 )}
                               </div>
@@ -826,7 +936,7 @@ export function SchedulePage() {
                   </div>
                 </section>
 
-                <WeatherRiskPanel />
+                <WeatherRiskPanel demoRiskWorkName={currentWorkName} />
               </div>
 
               <aside className="sk-panel sk-stage-detail">
@@ -953,7 +1063,7 @@ export function SchedulePage() {
                               {selectedStage.reason && <p>{selectedStage.reason}</p>}
                               {unsatisfiedChecks.map((c) => (
                                 <p key={c.class_key}>
-                                  Недостаточно техники: {c.label_ru} (факт {c.actual_qty} из {c.required_qty})
+                                  Недостаточно техники: {c.label_ru} (факт {c.actual_qty} из {requiredOf(c)})
                                 </p>
                               ))}
                             </div>
@@ -1046,10 +1156,36 @@ export function SchedulePage() {
                             </p>
                           )}
                         </div>
-                        <p className="sk-table__muted" style={{ marginTop: "var(--sk-space-3)" }}>
-                          Допустимо сверх плана: {stageRule.allowed.join(", ") || "—"}
-                        </p>
-                        {stageRule.alternatives_note && <p className="sk-table__muted">{stageRule.alternatives_note}</p>}
+                        {unsatisfiedChecks.length > 0 ? (
+                          // Нехватка техники важнее списка «допустимо сверх плана» и заметки про альтернативы:
+                          // вместо них показываем причину и её влияние на срок.
+                          <div className="sk-stage-alert" style={{ marginTop: "var(--sk-space-3)" }}>
+                            <div className="sk-stage-alert__icon">!</div>
+                            <div>
+                              <strong>Не хватает техники</strong>
+                              {unsatisfiedChecks.map((c) => (
+                                <p key={c.class_key}>
+                                  Не хватает {EQUIPMENT_GENITIVE_PLURAL[c.class_key] ?? c.label_ru.toLowerCase()}:{" "}
+                                  {c.actual_qty} из {requiredOf(c)}.
+                                </p>
+                              ))}
+                              <p>
+                                Из-за этого увеличился срок работ
+                                {selectedStage.delay_days > 0
+                                  ? ` — прогноз окончания сдвинут на ${selectedStage.delay_days} ${plural(selectedStage.delay_days)}`
+                                  : ""}
+                                .
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="sk-table__muted" style={{ marginTop: "var(--sk-space-3)" }}>
+                              Допустимо сверх плана: {stageRule.allowed.join(", ") || "—"}
+                            </p>
+                            {stageRule.alternatives_note && <p className="sk-table__muted">{stageRule.alternatives_note}</p>}
+                          </>
+                        )}
                       </div>
                     ) : (
                       <p className="sk-empty-state">Для этой работы не задано правило техники.</p>
@@ -1109,6 +1245,9 @@ export function SchedulePage() {
                 fact={dynamics.fact}
                 forecast={dynamics.forecast}
                 today={dynamics.today}
+                stages={dynamicsStages}
+                baselineFinish={network.baseline_finish_date}
+                projectedFinish={network.projected_finish_date}
               />
             ) : (
               <p className="sk-empty-state">Недостаточно данных графика, чтобы построить динамику.</p>

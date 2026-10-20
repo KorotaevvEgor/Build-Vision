@@ -121,10 +121,33 @@ def _write_cache(cache_key: str, result: LLMResult) -> None:
         logger.warning("Не удалось записать кэш LLM — продолжаем без кэширования")
 
 
+def file_sha256(path: Path) -> str:
+    hasher = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def _sniff_image_mime(data: bytes) -> str | None:
+    """Тип изображения по сигнатуре файла: расширением пользователя доверять нельзя (PNG с именем .jpg
+    модель отклоняет ошибкой несовпадения media type)."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return "image/gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
 def image_data_url(image_path: Path) -> str:
     """Кодирует изображение в data URL, как того требует OpenAI-совместимый формат."""
-    mime = mimetypes.guess_type(image_path.name)[0] or "image/jpeg"
-    encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
+    data = image_path.read_bytes()
+    mime = _sniff_image_mime(data) or mimetypes.guess_type(image_path.name)[0] or "image/jpeg"
+    encoded = base64.b64encode(data).decode("ascii")
     return f"data:{mime};base64,{encoded}"
 
 

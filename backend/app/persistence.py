@@ -39,6 +39,7 @@ def persist_observation(
     camera_external_id: str | None = None,
     image_size: tuple[int, int] | None = None,
     vision: dict | None = None,
+    captured_at=None,
 ) -> bool:
     """Сохраняет наблюдение и связанные записи. Возвращает True при успехе.
 
@@ -81,6 +82,7 @@ def persist_observation(
                 image_path=image_path,
                 image_sha256=image_sha256,
                 observed_date=evaluation.observed_date,
+                captured_at=captured_at,
                 date_confirmed=evaluation.date_confirmed,
                 overall_status=evaluation.overall_status,
                 overall_explanation=evaluation.overall_explanation_ru,
@@ -115,7 +117,7 @@ def persist_observation(
         return False
 
 
-def replace_observation_results(observation, evaluation: ObservationEvaluation) -> None:
+def replace_observation_results(observation, evaluation: ObservationEvaluation, *, execution_trace=None) -> None:
     """Перезаписывает результаты уже сохранённого наблюдения новым прогоном анализа.
 
     Нужен при переанализе после изменения порога уверенности детектора (см.
@@ -126,9 +128,26 @@ def replace_observation_results(observation, evaluation: ObservationEvaluation) 
     from core.models import Stage as StageRow
     from core.models import StageEvaluationRecord
 
+    from datetime import datetime, UTC
+    observation.analysis_history = [*observation.analysis_history, {
+        'archived_at':datetime.now(UTC).isoformat(),'status':observation.overall_status,
+        'explanation':observation.overall_explanation,
+        'ai_analysis':observation.ai_analysis,
+        'detections':list(observation.detections.values('class_key','confidence','bbox','ambiguous','activity')),
+        'stages':list(observation.stage_evaluations.values('work_name_snapshot','status','explanation','quantity_checks_snapshot','methodology_snapshot'))}]
     observation.overall_status = evaluation.overall_status
     observation.overall_explanation = evaluation.overall_explanation_ru
-    observation.save(update_fields=["overall_status", "overall_explanation"])
+    fields = ["overall_status", "overall_explanation", "analysis_history"]
+    if execution_trace is not None:
+        # Enrichment describes the old detector snapshot, so archive and invalidate it.
+        observation.ai_analysis = {"enabled": False, "status": "disabled",
+            "reason": "Повторный анализ обновил детекции; языковая модель повторно не запускалась",
+            "vision": None, "conclusion": None, "stage_mismatch": None,
+            "zone_deviations": [], "execution_trace": execution_trace}
+        fields.extend(["ai_analysis", "vision_stage_key", "vision_stage_label", "readiness_percent"])
+        observation.vision_stage_key = observation.vision_stage_label = ""
+        observation.readiness_percent = None
+    observation.save(update_fields=fields)
 
     DetectionRow.objects.filter(observation=observation).delete()
     DetectionRow.objects.bulk_create(
@@ -160,6 +179,8 @@ def _quantity_check_dict(check) -> dict:
         "required_qty": check.required_qty,
         "actual_qty": check.actual_qty,
         "satisfied": check.satisfied,
+        "observed_qty": check.observed_qty,
+        "excluded_qty": check.excluded_qty,
     }
 
 
@@ -171,6 +192,7 @@ def _create_stage_evaluation_row(model, stage_model, observation, stage_eval: St
         work_name_snapshot=stage_eval.work_name,
         status=stage_eval.status,
         explanation=stage_eval.explanation_ru,
+        methodology_snapshot=stage_eval.methodology,
         required_snapshot=stage_eval.required,
         allowed_snapshot=stage_eval.allowed,
         quantity_checks_snapshot=[_quantity_check_dict(c) for c in stage_eval.quantity_checks],
@@ -235,8 +257,17 @@ def get_observation(observation_id: str, site=None) -> dict | None:
         if observation is None:
             return None
 
+        from .observation_markup import read_markup
+        from .background_analysis import visible_status
+        ai_payload = visible_status(observation.ai_analysis)
+
         return {
             "observation_id": str(observation.id),
+            "ai_equipment": read_markup(observation.id, observation.image_sha256),
+            "ai": ai_payload,
+            "analysis_status": ai_payload.get('status','not_requested'),
+            "captured_at": observation.captured_at.isoformat() if observation.captured_at else None,
+            "analysis_revision_count": len(observation.analysis_history),
             "zone_id": observation.zone.external_id,
             "image_sha256": observation.image_sha256,
             "observed_date": observation.observed_date.isoformat() if observation.observed_date else None,
@@ -266,6 +297,7 @@ def get_observation(observation_id: str, site=None) -> dict | None:
                     "required": e.required_snapshot,
                     "allowed": e.allowed_snapshot,
                     "quantity_checks": e.quantity_checks_snapshot,
+                    "methodology": e.methodology_snapshot,
                     "missing_required": e.missing_required,
                     "explanation_ru": e.explanation,
                     "unexpected_detections": e.unexpected_detections,

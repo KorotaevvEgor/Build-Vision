@@ -44,6 +44,8 @@ def apply_zones_and_activity(
     camera_external_id: str | None,
     image_size: tuple[int, int],
     observed_date=None,
+    captured_at=None,
+    image_sha256=None,
 ) -> None:
     """Проставляет каждой детекции зону кадра и признак активности.
 
@@ -58,7 +60,8 @@ def apply_zones_and_activity(
 
     zones = frame_zones_module.load_frame_zones(camera_external_id)
     previous_frames = frame_zones_module.load_previous_frames(
-        camera_external_id, observed_date=observed_date
+        camera_external_id, observed_date=observed_date, captured_at=captured_at, image_size=image_size,
+        image_sha256=image_sha256, current_zones=zones,
     )
     if not zones and not previous_frames:
         return
@@ -76,6 +79,7 @@ def apply_zones_and_activity(
             detection.frame_zone_id = zone_hit.zone_id
             detection.frame_zone_name = zone_hit.zone_name
             detection.frame_zone_kind = zone_hit.zone_kind
+            detection.frame_stage_id = zone_hit.stage_id
         detection.activity = verdict.activity
         detection.activity_reason = verdict.reason
 

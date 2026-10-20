@@ -14,8 +14,9 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function readStoredTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
-  return window.localStorage.getItem(STORAGE_KEY) === "light" ? "light" : "dark";
+  if (typeof window === "undefined") return "light";
+  try { return window.localStorage.getItem(STORAGE_KEY) === "dark" ? "dark" : "light"; }
+  catch { return "light"; }
 }
 
 /**
@@ -29,7 +30,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    window.localStorage.setItem(STORAGE_KEY, theme);
+    try { window.localStorage.setItem(STORAGE_KEY, theme); } catch { /* Theme still works when browser storage is unavailable. */ }
   }, [theme]);
 
   const setTheme = useCallback((next: Theme) => setThemeState(next), []);

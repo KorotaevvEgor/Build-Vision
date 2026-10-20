@@ -60,7 +60,9 @@ def list_cameras(site=None) -> list[dict]:
         return []
     from core.models import Camera
 
-    qs = Camera.objects.select_related("zone").filter(**_site_filter_kwargs(site))
+    from django.db.models import Count
+
+    qs = Camera.objects.select_related("zone").filter(**_site_filter_kwargs(site)).annotate(frame_count=Count("observations"))
     cameras = []
     for cam in qs:
         latest = _latest_observation_for_zone(cam.zone.external_id, site=site)
@@ -74,6 +76,7 @@ def list_cameras(site=None) -> list[dict]:
                 "longitude": cam.longitude,
                 "stream_url": cam.stream_url,
                 "is_demo": cam.is_demo,
+                "observation_count": cam.frame_count,
                 "latest_observation": _observation_summary(latest) if latest else None,
             }
         )
@@ -97,7 +100,7 @@ def get_camera(camera_id: str, site=None) -> dict | None:
     recent = (
         Observation.objects.filter(zone=cam.zone)
         .prefetch_related("detections")
-        .order_by("-created_at")[:8]
+        .order_by("-created_at")[:10]
     )
     recent_list = list(recent)
     return {
@@ -211,23 +214,35 @@ def analytics(days: int = 14, site=None) -> dict:
     }
 
 
-def _stage_progress_percent(stage: Stage, today: date) -> float:
-    """Честная эвристика: доля прошедших дней периода этапа, не физический прогресс.
-
-    Задокументировано так же в модуле «Прогноз сроков» — это не измеренный факт
-    выполнения работ, а грубая временная прикидка для карточки на Главной.
-    """
-    total_days = (stage.end_date - stage.start_date).days + 1
-    if total_days <= 0:
-        return 100.0
-    elapsed_days = (min(today, stage.end_date) - stage.start_date).days + 1
-    return round(max(0.0, min(1.0, elapsed_days / total_days)) * 100, 1)
+def _stage_progress_percent(stage: Stage, today: date) -> float | None:
+    """Only recorded physical measurements can be shown as completion."""
+    if (stage.verified_progress_percent is not None and stage.verified_progress_date is not None
+        and stage.verified_progress_date <= today and stage.verified_progress_note.strip()):
+        return stage.verified_progress_percent
+    return None
 
 
 @dataclass(frozen=True)
 class ZoneRef:
     zone_id: str
     name: str
+
+
+def latest_confirmed_date(site) -> date | None:
+    if site is not None and db_available():
+        from core.models import Observation
+        latest = Observation.objects.filter(zone__site=site, date_confirmed=True,
+                    observed_date__isnull=False).order_by("-observed_date").first()
+        if latest is not None:
+            return latest.observed_date
+    return None
+
+
+def reference_date(site, today: date) -> date:
+    """A paused site's operational view is anchored to its last confirmed photo."""
+    if site is not None and site.status == "paused":
+        return latest_confirmed_date(site) or today
+    return today
 
 
 def dashboard_summary(
@@ -240,17 +255,19 @@ def dashboard_summary(
     longitude: float | None = None,
     site=None,
 ) -> dict:
-    active_stages = [s for s in schedule.stages if s.is_active_on(today)]
+    paused = site is not None and site.status == "paused"
+    view_date = reference_date(site, today)
+    active_stages = [s for s in schedule.stages if s.is_active_on(view_date) and s.stage_id not in schedule.summary_stage_ids()]
     current_stage = None
     if active_stages:
-        stage = min(active_stages, key=lambda s: s.start_date)
+        stage = (max if paused else min)(active_stages, key=lambda s: (s.start_date, s.stage_id))
         current_stage = {
             "stage_id": stage.stage_id,
             "work_name": stage.work_name,
             "zone_id": stage.zone_id,
             "start_date": stage.start_date.isoformat(),
             "end_date": stage.end_date.isoformat(),
-            "progress_percent": _stage_progress_percent(stage, today),
+            "progress_percent": None if paused else _stage_progress_percent(stage, today),
         }
 
     zone_summaries = []
@@ -269,7 +286,7 @@ def dashboard_summary(
     cameras = list_cameras(site=site)
 
     top_risk_factor = None
-    if current_stage is not None and weather_rules is not None and latitude is not None and longitude is not None:
+    if not paused and current_stage is not None and weather_rules is not None and latitude is not None and longitude is not None:
         stage_obj = next(s for s in schedule.stages if s.stage_id == current_stage["stage_id"])
         stage_forecast = forecast_for_stage(
             stage=stage_obj,
@@ -279,6 +296,7 @@ def dashboard_summary(
             longitude=longitude,
             today=today,
             site=site,
+            include_weather=False,
         )
         if stage_forecast["risk_factors"]:
             top_risk_factor = stage_forecast["risk_factors"][0]
@@ -296,6 +314,9 @@ def dashboard_summary(
 
     return {
         "available": db_available(),
+        "project_status": site.status if site is not None else "construction",
+        "reference_date": view_date.isoformat(),
+        "last_observed_date": latest_confirmed_date(site).isoformat() if latest_confirmed_date(site) else None,
         "zone_count": len(zones),
         "camera_count": len(cameras),
         "active_stage_count": len(active_stages),

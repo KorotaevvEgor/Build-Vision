@@ -7,28 +7,15 @@ import {
   type DemoAnalysis,
   type DemoSample,
 } from "../api";
+import { AnnotatedPhoto, EquipmentPanel } from "../components/EquipmentMarkup";
+import { useEquipmentMarkup } from "../components/equipmentMarkupState";
 import "./DemoPage.css";
-
-const CLASS_COLOR_VARS: Record<string, string> = {
-  excavator: "var(--sk-class-excavator)",
-  dump_truck: "var(--sk-class-dump-truck)",
-  mobile_crane: "var(--sk-class-mobile-crane)",
-  crane_manipulator: "var(--sk-class-crane-manipulator)",
-  concrete_mixer: "var(--sk-class-concrete-mixer)",
-  bulldozer: "var(--sk-class-bulldozer)",
-  road_roller: "var(--sk-class-road-roller)",
-  truck: "var(--sk-class-truck)",
-};
 
 const CONFIDENCE_LABELS: Record<string, string> = {
   high: "высокая",
   medium: "средняя",
   low: "низкая",
 };
-
-function classColor(classKey: string): string {
-  return CLASS_COLOR_VARS[classKey] ?? "var(--sk-class-unknown)";
-}
 
 export function DemoPage() {
   const [samples, setSamples] = useState<DemoSample[]>([]);
@@ -102,6 +89,7 @@ export function DemoPage() {
   };
 
   const vision = result?.vision;
+  const markup = useEquipmentMarkup(result, imageSize);
 
   return (
     <div className="sk-demo-page">
@@ -188,51 +176,13 @@ export function DemoPage() {
         <section className="sk-demo-result">
           <div className="sk-panel sk-demo-canvas">
             {loading && <div className="sk-demo-canvas__loading">Разбираем снимок…</div>}
-            {previewUrl && (
-              <div className="sk-demo-frame">
-                <img
-                  src={previewUrl}
-                  alt="Разбираемый снимок"
-                  onLoad={(event) =>
-                    setImageSize({
-                      width: event.currentTarget.naturalWidth,
-                      height: event.currentTarget.naturalHeight,
-                    })
-                  }
-                />
-                {imageSize &&
-                  result?.detections.map((detection, index) => {
-                    const [x1, y1, x2, y2] = detection.bbox;
-                    const color = detection.ambiguous
-                      ? "var(--sk-status-warning)"
-                      : !detection.in_taxonomy
-                        ? "var(--sk-class-unknown)"
-                        : classColor(detection.class_key);
-                    return (
-                      <div
-                        key={index}
-                        className="sk-demo-bbox"
-                        style={{
-                          left: `${(x1 / imageSize.width) * 100}%`,
-                          top: `${(y1 / imageSize.height) * 100}%`,
-                          width: `${((x2 - x1) / imageSize.width) * 100}%`,
-                          height: `${((y2 - y1) / imageSize.height) * 100}%`,
-                          borderColor: color,
-                        }}
-                      >
-                        <span className="sk-demo-bbox__label" style={{ backgroundColor: color }}>
-                          {detection.label_ru} {(detection.confidence * 100).toFixed(0)}%
-                          {detection.ambiguous ? " · неоднозначно" : ""}
-                        </span>
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
+            {previewUrl && <AnnotatedPhoto previewUrl={previewUrl} markup={markup} onImageSize={setImageSize} />}
           </div>
 
           {result && (
             <div className="sk-demo-readout">
+              <EquipmentPanel markup={markup} result={result} />
+
               {vision?.available ? (
                 <div className="sk-panel">
                   <h2>Стадия работ</h2>
@@ -272,66 +222,11 @@ export function DemoPage() {
                 <div className="sk-panel">
                   <h2>Стадия работ</h2>
                   <p className="sk-table__muted">
-                    Оценка стадии недоступна: языковая модель не ответила. Рамки с техникой ниже
+                    Оценка стадии недоступна: языковая модель не ответила. Рамки с техникой
                     получены детектором и остаются действительными.
                   </p>
                 </div>
               )}
-
-              <div className="sk-panel">
-                <h2>Обнаруженная техника</h2>
-                {result.equipment_counts.length === 0 ? (
-                  <p className="sk-empty-state">
-                    Техника из таксономии не распознана уверенно. Это может быть кадр без техники
-                    или ограничение модели — система не выдаёт догадку за факт.
-                  </p>
-                ) : (
-                  <table className="sk-table">
-                    <thead>
-                      <tr>
-                        <th>Объект</th>
-                        <th>Кол-во</th>
-                        <th>Уверенность</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {result.equipment_counts.map((item) => (
-                        <tr key={item.class_key}>
-                          <td>
-                            <span
-                              className="sk-class-dot"
-                              style={{ background: classColor(item.class_key) }}
-                              aria-hidden="true"
-                            />
-                            {item.label_ru}
-                          </td>
-                          <td>{item.count}</td>
-                          <td>{(item.max_confidence * 100).toFixed(0)}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-
-                {result.known_limitations.length > 0 && (
-                  <div className="sk-demo-limitation">
-                    <strong>Честное предупреждение о качестве</strong>
-                    {result.known_limitations.map((limitation) => (
-                      <p key={limitation.class_key}>
-                        <b>{limitation.label_ru}</b> (
-                        {limitation.issue === "low_precision"
-                          ? "низкая точность"
-                          : "низкая полнота"}
-                        ): {limitation.description}
-                      </p>
-                    ))}
-                    <p className="sk-table__muted">
-                      Цифры выше приведены как есть, без подгонки: мы сами измерили это
-                      ограничение на размеченной выборке и показываем его рядом с результатом.
-                    </p>
-                  </div>
-                )}
-              </div>
 
               {result.comment.available && (
                 <div className="sk-panel">

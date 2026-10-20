@@ -11,8 +11,12 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import math
+import os
 import threading
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -28,6 +32,9 @@ logger = logging.getLogger(__name__)
 # модели отличать человека от техники по-прежнему, просто рамки для него
 # отбрасываются перед тем, как результат уйдёт наружу (в БД, на фронтенд).
 PERSON_CLASS_KEY = "person"
+
+class DetectorBusyError(RuntimeError):
+    """Bounded inference admission, so concurrent uploads cannot queue indefinitely."""
 
 
 @dataclass
@@ -63,6 +70,7 @@ class Detector:
         conf: float = config.DEFAULT_CONF,
         iou: float = config.DEFAULT_IOU,
         max_det: int = config.DEFAULT_MAX_DET,
+        class_thresholds: dict[str, float] | None = None,
     ) -> None:
         self.weights = weights
         self.imgsz = imgsz
@@ -76,12 +84,31 @@ class Detector:
         # Ultralytics/YOLO-World при конкурентном инференсе на CPU безопаснее просто всегда
         # выполнять predict() по одному.
         self._predict_lock = threading.Lock()
+        self._request_slots = threading.BoundedSemaphore(2)
         self.vocabulary: Vocabulary = load_vocabulary()
+        # Explicit opt-in only: calibration must be validated on independent
+        # annotated scenes before deployment. This gate can only raise the
+        # runtime global threshold, never recover boxes removed by YOLO/NMS.
+        if class_thresholds is None:
+            class_thresholds = json.loads(os.environ.get("SK_DETECTOR_CLASS_THRESHOLDS_JSON", "{}"))
+        if not isinstance(class_thresholds, dict):
+            raise TypeError("Class thresholds must be a JSON object")
+        self.class_thresholds = {}
+        for key, value in class_thresholds.items():
+            if key not in self.vocabulary.classes or isinstance(value, bool):
+                raise ValueError(f"Invalid detector class threshold: {key}")
+            try:
+                threshold = float(value)
+            except (ValueError, TypeError) as exc:
+                raise ValueError(f"Invalid detector class threshold: {key}") from exc
+            if not math.isfinite(threshold) or not 0 <= threshold <= 1:
+                raise ValueError(f"Invalid detector class threshold: {key}")
+            self.class_thresholds[key] = threshold
         rules = load_equipment_rules()
         # Неориентированные пары классов, которые baseline показал как путаемые.
         self._confusable_pairs = {frozenset(pair) for pair in rules.confusable_class_pairs}
         self._ambiguity_margin = rules.ambiguity_margin
-        # Кэш активного production-классификатора-корректора (см. модуль «AI Learning»):
+        # Кэш активного production-классификатора-корректора (см. модуль «Learning»):
         # (id версии, загруженный артефакт) — перезагружается, только если id изменился.
         self._correction_classifier_cache: tuple[int, dict] | None = None
 
@@ -102,7 +129,18 @@ class Detector:
     def _is_confusable(self, a: str, b: str) -> bool:
         return frozenset((a, b)) in self._confusable_pairs
 
-    def detect(self, image_path: Path, *, apply_correction_classifier: bool = True) -> list[Detection]:
+    def detect(self, image_path: Path, *, apply_correction_classifier: bool = True, site_id: int | None = None, execution_trace: dict | None = None) -> list[Detection]:
+        if not self._request_slots.acquire(blocking=False):
+            raise DetectorBusyError('Детектор занят обработкой снимков. Повторите загрузку через несколько секунд.')
+        try:
+            return self._detect(image_path, apply_correction_classifier=apply_correction_classifier, site_id=site_id, execution_trace=execution_trace)
+        finally:
+            self._request_slots.release()
+
+    def _detect(self, image_path: Path, *, apply_correction_classifier: bool = True, site_id: int | None = None, execution_trace: dict | None = None) -> list[Detection]:
+        trace = execution_trace if execution_trace is not None else {}
+        trace["run_id"] = str(uuid.uuid4())
+        trace.update(detector={"status": "running", "weights": self.weights}, correction={"status": "unused", "reason": "disabled", "site_id": site_id})
         self._ensure_loaded()
         # Порог берётся из настроек на каждый вызов: инженер меняет его в
         # интерфейсе и сразу видит результат на следующем снимке, без перезапуска.
@@ -134,6 +172,8 @@ class Detector:
             if info.key == PERSON_CLASS_KEY:
                 continue
             confidence = float(box.conf.item())
+            if confidence < max(settings.detector_confidence, self.class_thresholds.get(info.key, 0)):
+                continue
             ambiguous = False
             runner_up_key = None
             runner_up_conf = None
@@ -159,59 +199,69 @@ class Detector:
             )
 
         detections.sort(key=lambda d: -d.confidence)
-        # Классификатор-корректор обучен только на коррекциях legacy-проекта (см. план,
-        # граница AI Learning) — не применяется автоматически к новым проектам.
+        # Only an explicitly published production version in this exact scope may run.
         if apply_correction_classifier:
-            self._apply_correction_classifier(image_path, detections)
+            self._apply_correction_classifier(image_path, detections, site_id=site_id, execution_trace=trace["correction"])
+        trace["detector"].update(status="participated", detection_count=len(detections), confidence=settings.detector_confidence)
         return detections
 
-    def _load_correction_classifier(self) -> dict | None:
-        """См. модуль «AI Learning»: если есть обученный и опубликованный
+    def _load_correction_classifier(self, *, site_id: int | None = None, execution_trace: dict | None = None) -> dict | None:
+        """См. модуль «Learning»: если есть обученный и опубликованный
         production-классификатор-корректор, возвращает его; иначе None — тогда
         поведение не меняется (честная логика confusable-пар сохраняется как есть).
         """
+        trace = execution_trace if execution_trace is not None else {}
         if not django_bridge.ensure_django_ready():
+            trace.update(status="unused", reason="database_unavailable")
             return None
         try:
             from core.models import ModelVersion
 
             production = (
-                ModelVersion.objects.filter(status=ModelVersion.Status.PRODUCTION)
+                ModelVersion.objects.filter(status=ModelVersion.Status.PRODUCTION, site_id=site_id)
                 .exclude(artifact_path="")
                 .order_by("-created_at")
                 .first()
             )
         except Exception:
+            trace.update(status="error", reason="version_lookup_failed")
             logger.exception("Не удалось проверить production-версию классификатора-корректора")
             return None
 
         if production is None:
+            trace.update(status="unused", reason="no_production_version")
             self._correction_classifier_cache = None
             return None
-        if self._correction_classifier_cache is not None and self._correction_classifier_cache[0] == production.id:
-            return self._correction_classifier_cache[1]
+        trace["version_id"] = production.id
+        cached = self._correction_classifier_cache
+        if cached is not None and cached[0] == production.id:
+            return cached[1]
 
         try:
             import joblib
 
             artifact = joblib.load(production.artifact_path)
         except Exception:
+            trace.update(status="error", reason="artifact_load_failed")
             logger.exception("Не удалось загрузить артефакт классификатора-корректора")
             return None
 
         self._correction_classifier_cache = (production.id, artifact)
         return artifact
 
-    def _apply_correction_classifier(self, image_path: Path, detections: list[Detection]) -> None:
+    def _apply_correction_classifier(self, image_path: Path, detections: list[Detection], *, site_id: int | None = None, execution_trace: dict | None = None) -> None:
         """Уточняет неоднозначные детекции обученным на коррекциях классификатором.
 
         Не подменяет ambiguous=True на False — решение классификатора показывается
         инженеру как уточнение, а не выдаётся за окончательно надёжный результат.
         """
+        trace = execution_trace if execution_trace is not None else {}
         ambiguous_detections = [d for d in detections if d.ambiguous]
+        trace.update(candidate_count=len(ambiguous_detections), classified_count=0, changed_count=0)
         if not ambiguous_detections:
+            trace.update(status="unused", reason="no_ambiguous_detections")
             return
-        artifact = self._load_correction_classifier()
+        artifact = self._load_correction_classifier(site_id=site_id, execution_trace=trace)
         if artifact is None:
             return
 
@@ -231,16 +281,20 @@ class Detector:
                         continue
                     embedding = clip_embeddings.embed_image_from_pil(crop)
                     predicted_key = artifact["model"].predict([embedding])[0]
+                    trace["classified_count"] += 1
                     if predicted_key == config.CORRECTION_NOT_EQUIPMENT_LABEL:
                         continue
                     info = self.vocabulary.classes.get(predicted_key)
                     if info is None or info.key == detection.class_key:
                         continue
+                    trace["changed_count"] += 1
                     detection.runner_up_class_key = detection.class_key
                     detection.class_key = info.key
                     detection.label_ru = info.label_ru
                     detection.in_taxonomy = info.in_taxonomy
+            trace.update(status="participated" if trace["classified_count"] else "unused", reason="classified" if trace["classified_count"] else "no_valid_crops")
         except Exception:
+            trace.update(status="error", reason="classification_failed")
             logger.exception("Классификатор-корректор недоступен, используется исходная детекция")
 
     def _confusable_partners(self, class_key: str) -> list[str]:

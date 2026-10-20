@@ -74,3 +74,22 @@ hackathon_materials/PLAN.md
 # поэтому не указываем его здесь буквально) — см. deploy/nginx.conf.example для публичного шаблона.
 deploy/nginx_*.conf
 !deploy/nginx.conf.example
+
+# Локальные результаты проверок и рабочие материалы
+.test-tmp*/
+.env.*
+!.env.example
+!**/.env.example
+*.joblib
+*.pkl
+*.pickle
+.coverage
+htmlcov/
+docs/superpowers/
+docs/*verification_*.json
+docs/detector_validation*.json
+docs/detector_calibration*.json
+docs/presentation_assets/
+deploy/*response*.json
+deploy/get_obs.json
+elementor-lead-webhook-snippet.php

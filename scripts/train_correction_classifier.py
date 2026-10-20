@@ -1,6 +1,6 @@
 """Обучение классификатора-корректора поверх CLIP-эмбеддингов коррекций инженера.
 
-См. план, модуль «AI Learning»: вместо дообучения всего YOLO-World — лёгкий
+См. план, модуль «Learning»: вместо дообучения всего YOLO-World — лёгкий
 классификатор (логистическая регрессия из scikit-learn, секунды на CPU) поверх
 CLIP-эмбеддингов обрезков, которые инженер подтвердил/исправил через «Что
 это?» в интерфейсе (core.models.Correction).
@@ -51,7 +51,7 @@ def main() -> None:
     from core.models import Correction, ModelVersion
 
     # Legacy-only: коррекции других проектов не примешиваются к обучающей выборке
-    # (см. план, граница AI Learning) — орфанные коррекции (observation=NULL) тоже исключены.
+    # (см. план, граница Learning) — орфанные коррекции (observation=NULL) тоже исключены.
     corrections = list(
         Correction.objects.select_related("corrected_class").filter(
             observation__isnull=False, observation__zone__site__is_legacy=True

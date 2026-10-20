@@ -60,6 +60,10 @@ def load_previous_frames(
     camera_external_id: str | None,
     depth: int = HISTORY_DEPTH,
     observed_date=None,
+    captured_at=None,
+    image_size=None,
+    image_sha256=None,
+    current_zones=None,
 ) -> list[list[dict]]:
     """Детекции предыдущих снимков той же камеры, от самого свежего к старым.
 
@@ -70,23 +74,36 @@ def load_previous_frames(
     дата, история ограничивается окном ``MAX_COMPARABLE_GAP_DAYS``. Без этого на
     архивной съёмке раз в месяц правило простоя давало бы уверенную чушь.
     """
-    if not camera_external_id or not django_bridge.ensure_django_ready():
+    if not camera_external_id or not captured_at or not django_bridge.ensure_django_ready():
         return []
     try:
         from datetime import timedelta
 
         from core.models import Observation
 
-        queryset = Observation.objects.filter(camera__external_id=camera_external_id)
-        if observed_date is not None:
-            window_start = observed_date - timedelta(days=MAX_COMPARABLE_GAP_DAYS)
-            queryset = queryset.filter(
-                observed_date__isnull=False,
-                observed_date__gte=window_start,
-                observed_date__lte=observed_date,
-            )
-
-        observations = queryset.order_by("-created_at").prefetch_related("detections")[:depth]
+        from .evidence import MIN_INTERVAL_SECONDS, MAX_INTERVAL_SECONDS
+        queryset = Observation.objects.filter(camera__external_id=camera_external_id, date_confirmed=True,
+            captured_at__gte=captured_at-timedelta(seconds=MAX_INTERVAL_SECONDS),
+            captured_at__lte=captured_at-timedelta(seconds=MIN_INTERVAL_SECONDS))
+        if image_sha256:
+            queryset = queryset.exclude(image_sha256=image_sha256)
+        if image_size:
+            queryset = queryset.filter(image_width=image_size[0], image_height=image_size[1])
+        candidates = queryset.order_by('-captured_at').prefetch_related('detections','stage_evaluations')[:depth*8]
+        observations, seen = [], set()
+        for candidate in candidates:
+            if candidate.image_sha256 in seen:
+                continue
+            if current_zones is not None and not any(
+                e.methodology_snapshot.get('rule',{}).get('frame_zones') == sorted(current_zones,key=lambda z:str(z.get('id')))
+                for e in candidate.stage_evaluations.all()):
+                continue
+            if observations and (observations[-1].captured_at-candidate.captured_at).total_seconds()<MIN_INTERVAL_SECONDS:
+                continue
+            seen.add(candidate.image_sha256)
+            observations.append(candidate)
+            if len(observations) >= depth:
+                break
         return [
             [
                 {"class_key": detection.class_key, "bbox": detection.bbox}

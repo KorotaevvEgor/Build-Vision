@@ -1,0 +1,19 @@
+import {useId} from "react";
+type Node={x:number;y:number;w:number;h:number;title:string;lines:string[];tone?:string};
+export function ArchitectureDiagram({kind}:{kind:"cores"|"pipeline"|"cameras"}){
+ const marker=useId().replaceAll(":","");let nodes:Node[],paths:string[],height:number,label:string;
+ if(kind==="cores"){
+ height=605;label="Целевая архитектура четырёх модулей и локальной Qwen";
+ nodes=[{x:30,y:20,w:220,h:75,title:"Камеры и зоны",lines:["Кадры, даты, идентификаторы"]},{x:270,y:20,w:220,h:75,title:"Календарный план",lines:["Работы, нормы, зависимости"]},{x:510,y:20,w:220,h:75,title:"Коррекции инженера",lines:["Метки и проверенные примеры"]},{x:750,y:20,w:220,h:75,title:"Метеоданные",lines:["Время, источник, параметры"]},{x:230,y:160,w:540,h:105,title:"Planning · локальная Qwen",tone:"violet",lines:["Контекст проекта → разрешённые инструменты → объяснение","Численные проверки и график рассчитывает Python-модуль"]},{x:30,y:335,w:290,h:115,title:"Vision",tone:"blue",lines:["YOLO-World + пространственные зоны","Рамки · классы · уверенность","Факты наблюдения"]},{x:355,y:335,w:290,h:115,title:"Learning",tone:"violet",lines:["Инженер + CLIP-классификатор","Коррекции · проверка · версии","Контролируемое улучшение"]},{x:680,y:335,w:290,h:115,title:"Weather",tone:"teal",lines:["Погода + технологические правила","Периоды риска · пороги","Ограничения по работам"]},{x:230,y:520,w:540,h:70,title:"Проверяемое решение",tone:"amber",lines:["План / факт · доказательства · действие · влияние на сроки"]}];
+ paths=["M140 95V125H500V150","M380 95V125H500","M620 95V125H500","M860 95V125H500","M500 265V300H175V325","M500 300V325","M500 300H825V325","M175 450V485H500V510","M500 450V485","M825 450V485H500"];
+ }else if(kind==="pipeline"){
+ height=195;label="Семь шагов от снимка до инженерного решения";
+ const titles=["01 · Приём","02 · Vision","03 · Контекст","04 · Сравнение","05 · Подтверждение","06 · Прогноз","07 · Решение"];
+ const lines=[["Камера и дата","Качество кадра"],["Детекции","Класс и рамка"],["Зона и работа","Версия нормы"],["План / факт","Дефицит"],["Серия кадров","Проверка"],["Резерв и связи","Сдвиг сдачи"],["Доказательства","Действие"]];
+ nodes=titles.map((title,i)=>({x:10+i*142,y:35,w:130,h:115,title,lines:lines[i],tone:i===6?"amber":i===4?"violet":"blue"}));paths=nodes.slice(0,-1).map(n=>`M${n.x+n.w} 92H${n.x+n.w+10}`);
+ }else{
+ height=410;label="Целевая схема согласования наблюдений разных камер";
+ nodes=[{x:25,y:35,w:275,h:105,title:"Камера A",tone:"blue",lines:["Время + полигон + детекции","Идентификаторы доказательств"]},{x:25,y:245,w:275,h:105,title:"Камера B",tone:"blue",lines:["Время + полигон + детекции","Пересекающийся обзор"]},{x:380,y:130,w:255,h:135,title:"Согласование",tone:"violet",lines:["Одна физическая зона","Одно временное окно","Связь объектов / неопределённость"]},{x:705,y:130,w:275,h:135,title:"Единый план / факт",tone:"amber",lines:["Устранение двойного счёта","Граница покрытия камер","Уровень доказательности"]}];paths=["M300 87H340V195H370","M300 297H340V195","M635 195H695"];
+ }
+ return <figure className="docs-diagram"><div className="docs-diagram-scroll" tabIndex={0} role="region" aria-label={label}><svg viewBox={`0 0 1000 ${height}`} role="img" aria-label={label}><defs><marker id={marker} markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="currentColor"/></marker></defs>{paths.map((d,i)=><path key={i} d={d} className="docs-edge" markerEnd={`url(#${marker})`}/>)}{nodes.map((n,i)=><g key={i} className={`docs-diagram-node docs-diagram-node--${n.tone??"neutral"}`}><rect x={n.x} y={n.y} width={n.w} height={n.h} rx="12"/><text x={n.x+14} y={n.y+28} className="docs-node-title">{n.title}</text>{n.lines.map((line,j)=><text key={j} x={n.x+14} y={n.y+52+j*20} className="docs-node-line">{line}</text>)}</g>)}</svg></div><figcaption>{label}. На небольшом экране схему можно прокручивать по горизонтали.</figcaption></figure>;
+}

@@ -1,0 +1,154 @@
+/* --- Рамки на фото --- */
+
+.sk-markup-box {
+  position: absolute;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  transition:
+    opacity var(--sk-transition-fast),
+    background var(--sk-transition-fast);
+}
+
+.sk-markup-box--dim {
+  opacity: 0.28;
+}
+
+.sk-markup-box--active {
+  background: rgba(255, 255, 255, 0.12);
+  border-width: 3px;
+  z-index: 2;
+}
+
+.sk-markup-box__label {
+  position: absolute;
+  top: -21px;
+  left: -2px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  line-height: 1.5;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
+/* Рамка у самого верхнего края кадра: подпись прячется внутрь, чтобы не обрезаться. */
+.sk-markup-box__label--inside {
+  top: 0;
+  left: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* --- Панель со списком техники --- */
+
+.sk-markup-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sk-space-3);
+  flex-wrap: wrap;
+}
+
+.sk-markup-panel__head h2 {
+  margin: 0;
+}
+
+.sk-markup-panel__note {
+  margin: var(--sk-space-2) 0 var(--sk-space-3);
+  font-size: 12px;
+  color: var(--sk-text-faint);
+  line-height: 1.5;
+}
+
+.sk-markup-toggle {
+  display: inline-flex;
+  border: 1px solid var(--sk-border-strong);
+  border-radius: var(--sk-radius-control);
+  overflow: hidden;
+}
+
+.sk-markup-toggle button {
+  border: none;
+  background: transparent;
+  color: var(--sk-text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.sk-markup-toggle button.sk-markup-toggle__btn--active {
+  background: var(--sk-accent);
+  color: #fff;
+}
+
+.sk-markup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-2);
+}
+
+.sk-markup-list__row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--sk-space-3);
+  padding: var(--sk-space-2) var(--sk-space-3);
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius-control);
+  background: var(--sk-surface-muted);
+  color: var(--sk-text);
+  font-family: inherit;
+  font-size: var(--sk-font-size-sm);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--sk-transition-fast),
+    background var(--sk-transition-fast);
+}
+
+.sk-markup-list__row:hover,
+.sk-markup-list__row--active {
+  border-color: var(--sk-accent);
+  background: var(--sk-accent-bg);
+}
+
+.sk-markup-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.sk-markup-list__name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-markup-list__count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.sk-markup-list__conf {
+  min-width: 38px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--sk-text-faint);
+}
+
+.sk-markup-panel__total {
+  margin: var(--sk-space-3) 0 0;
+  font-size: var(--sk-font-size-sm);
+  color: var(--sk-text-muted);
+}

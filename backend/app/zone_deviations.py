@@ -79,9 +79,9 @@ def detect_zone_deviations(
                 ZoneDeviation(
                     kind="equipment_idle",
                     severity=SEVERITY_WARNING,
-                    title="Простой техники при активном этапе",
+                    title="Возможный простой при активном этапе",
                     message=(
-                        f"Простаивает техника: {', '.join(_labels(idle))}. "
+                        f"Признаки возможного простоя: {', '.join(_labels(idle))}. "
                         + (" ".join(sorted(reasons)) if reasons else "")
                     ).strip(),
                     equipment=_labels(idle),

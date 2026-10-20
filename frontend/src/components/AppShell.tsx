@@ -1,20 +1,22 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
+import { useTheme } from "../ThemeContext";
 import { useAuth } from "../AuthContext";
 import { avatarUrl } from "../api";
 import { HeaderClock } from "./HeaderClock";
+import { projectTimeZone } from "./projectTime";
 import { HeaderWeather } from "./HeaderWeather";
 import { ProjectAssistant } from "./ProjectAssistant";
 import "./AppShell.css";
 
 const PROJECT_NAV_ITEMS = [
   { to: "", label: "Главная", icon: "home" },
-  { to: "cameras", label: "Камеры", icon: "camera" },
   { to: "schedule", label: "Календарный план", icon: "calendar" },
-  { to: "forecast", label: "Прогноз", icon: "trend" },
-  { to: "analytics", label: "Аналитика", icon: "chart" },
+  { to: "forecast", label: "Прогноз и аналитика", icon: "trend" },
   { to: "notifications", label: "Отклонения", icon: "bell" },
+  { to: "cameras", label: "Камеры", icon: "camera" },
+  { to: "corrections", label: "Коррекции", icon: "scan" },
   { to: "map", label: "Карта", icon: "map" },
   { to: "settings", label: "Настройки проекта", icon: "gear" },
 ] as const;
@@ -34,7 +36,6 @@ const ICON_PATHS: Record<(typeof PROJECT_NAV_ITEMS)[number]["icon"] | "grid" | "
   map: "M9 4 4 6v14l5-2 6 2 5-2V4l-5 2-6-2Z M9 4v14 M15 6v14",
   calendar: "M4 5h16v16H4z M4 9h16 M8 3v4 M16 3v4",
   trend: "M4 16l5-6 4 3 7-9 M14 4h6v6",
-  chart: "M4 20V10 M11 20V4 M18 20v-7",
   bell: "M6 10a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 14 6 10Z M10 19a2 2 0 0 0 4 0",
   gear: "M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z M4 12h1.6M18.4 12H20M12 4v1.6M12 18.4V20M6.3 6.3l1.1 1.1M16.6 16.6l1.1 1.1M17.7 6.3l-1.1 1.1M7.4 16.6l-1.1 1.1",
   grid: "M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z",
@@ -71,6 +72,7 @@ interface AppShellProps {
 
 export function AppShell({ children, project, notificationCount = 0 }: AppShellProps) {
   const { user, logout } = useAuth();
+  const {theme,setTheme}=useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   // На узких экранах сайдбар убирается за экран и выезжает по кнопке-гамбургеру в шапке
   // (см. .sk-sidebar--open в AppShell.css) вместо постоянной узкой колонки, чтобы оставить место под контент.
@@ -85,7 +87,7 @@ export function AppShell({ children, project, notificationCount = 0 }: AppShellP
       )}
       <aside className={`sk-sidebar${mobileNavOpen ? " sk-sidebar--open" : ""}`} aria-label="Основная навигация">
         <div className="sk-sidebar__brand">
-          <img className="sk-sidebar__logo" src="/logo.png" alt="BuildVision" />
+          <img className="sk-sidebar__logo" src={`/buildvision-${theme}.svg`} alt="BuildVision" width="180" height="48" />
           <button
             type="button"
             className="sk-sidebar__close"
@@ -159,6 +161,7 @@ export function AppShell({ children, project, notificationCount = 0 }: AppShellP
         )}
 
         <div className="sk-sidebar__footer">
+          <Link to="/documentation" className="sk-sidebar-docs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-2H4V4Zm9 3a3 3 0 0 1 3-3h4v15h-3a4 4 0 0 0-4 2"/></svg><span>Презентация<br/>и документация</span><span aria-hidden="true">↗</span></Link>
           <img
             className="sk-sidebar__footer-logo"
             src="/partner-logo.png"
@@ -192,13 +195,17 @@ export function AppShell({ children, project, notificationCount = 0 }: AppShellP
             </div>
           )}
           <div className="sk-topbar__spacer" />
-          {project && <HeaderClock />}
+          {project && <HeaderClock timeZone={projectTimeZone(project)} />}
           {project && (
             <HeaderWeather
               projectId={project.id}
               hasLocation={project.latitude != null && project.longitude != null}
             />
           )}
+          <div className="sk-header-theme" role="group" aria-label="Цветовая тема">
+            <button type="button" aria-label="Светлая тема" title="Светлая тема" aria-pressed={theme==="light"} onClick={()=>setTheme("light")}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
+            <button type="button" aria-label="Тёмная тема" title="Тёмная тема" aria-pressed={theme==="dark"} onClick={()=>setTheme("dark")}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 13a8.5 8.5 0 0 1-9.5-9.5A8.5 8.5 0 1 0 20.5 13Z"/></svg></button>
+          </div>
           {user && (
             <div className="sk-profile">
               <button

@@ -1,0 +1,11 @@
+# Предметные проверки без загрузки моделей распознавания.
+-r admin_panel/requirements.txt
+pydantic==2.13.5
+pytest==9.1.1
+httpx==0.28.1
+fastapi==0.141.1
+python-multipart==0.0.32
+pillow==12.3.0
+openpyxl==3.1.5
+
+requests==2.34.2

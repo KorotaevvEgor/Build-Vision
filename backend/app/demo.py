@@ -25,6 +25,7 @@ import tempfile
 import time
 import uuid
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from pathlib import Path
 from threading import Lock
@@ -168,12 +169,90 @@ def analyze(image_path: Path, image_sha256: str) -> dict:
     """
     from .detector import get_detector
     from .llm import assess_photo, build_photo_comment, llm_is_configured
+    from .llm.equipment import locate_equipment
     from .rules_config import load_equipment_rules
 
     detector = get_detector()
-    # Классификатор-корректор обучен на коррекциях конкретного проекта —
-    # на публичном экране со случайной фотографией его применять неверно.
-    detections = detector.detect(image_path, apply_correction_classifier=False)
+    llm_ready = llm_is_configured()
+
+    def _assess() -> dict | None:
+        try:
+            return asdict(assess_photo(image_path, image_sha256=image_sha256))
+        except Exception:
+            logger.exception("Демонстрационная оценка снимка не выполнена")
+            return None
+
+    def _locate():
+        try:
+            return locate_equipment(image_path, image_sha256=image_sha256)
+        except Exception:
+            logger.exception("ИИ-разметка техники не выполнена")
+            return None
+        finally:
+            # Словарь классов читается из БД в рабочем потоке: соединение Django привязано к потоку
+            # и без явного закрытия осталось бы открытым после завершения потока.
+            try:
+                from django.db import connections
+
+                connections.close_all()
+            except Exception:
+                logger.debug("Не удалось закрыть соединение БД в рабочем потоке", exc_info=True)
+
+    # Детектор (CPU), оценка стадии и ИИ-разметка (сетевые запросы к модели) независимы — запускаем
+    # параллельно, чтобы время разбора было равно самой медленной части, а не их суммой.
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        # Классификатор-корректор обучен на коррекциях конкретного проекта —
+        # на публичном экране со случайной фотографией его применять неверно.
+        detect_future = pool.submit(detector.detect, image_path, apply_correction_classifier=False)
+        assess_future = pool.submit(_assess) if llm_ready else None
+        locate_future = pool.submit(_locate) if llm_ready else None
+        detections = detect_future.result()
+        vision = assess_future.result() if assess_future else None
+        located = locate_future.result() if locate_future else None
+
+    if not llm_ready:
+        ai_equipment: dict = {
+            "available": False,
+            "items": [],
+            "counts": [],
+            "model": "",
+            "cached": False,
+            "error": "языковая модель не настроена",
+        }
+    elif located is None:
+        ai_equipment = {
+            "available": False,
+            "items": [],
+            "counts": [],
+            "model": "",
+            "cached": False,
+            "error": "внутренняя ошибка",
+        }
+    else:
+        ai_counts: dict[str, dict] = {}
+        for box in located.items:
+            entry = ai_counts.setdefault(
+                box.class_key,
+                {"class_key": box.class_key, "label_ru": box.label_ru, "count": 0, "max_confidence": 0.0},
+            )
+            entry["count"] += 1
+            entry["max_confidence"] = max(entry["max_confidence"], box.confidence)
+        ai_equipment = {
+            "available": located.available,
+            "items": [
+                {
+                    "class_key": box.class_key,
+                    "label_ru": box.label_ru,
+                    "confidence": box.confidence,
+                    "box": list(box.box),
+                }
+                for box in located.items
+            ],
+            "counts": sorted(ai_counts.values(), key=lambda e: (-e["count"], -e["max_confidence"])),
+            "model": located.model,
+            "cached": located.cached,
+            "error": located.error,
+        }
 
     counts: dict[str, dict] = {}
     for item in detections:
@@ -186,38 +265,34 @@ def analyze(image_path: Path, image_sha256: str) -> dict:
         entry["count"] += 1
         entry["max_confidence"] = max(entry["max_confidence"], item.confidence)
 
-    vision = None
     comment = {"available": False, "text": "", "error": "языковая модель не настроена"}
-    if llm_is_configured():
+    if llm_ready and vision and vision.get("available"):
+        # Состав техники для комментария — тот же, что видит пользователь в списке:
+        # ИИ-разметка, если она есть, иначе детектор.
+        equipment_for_comment = (
+            ai_equipment["counts"] if ai_equipment["available"] else list(counts.values())
+        )
+        payload = {
+            "stage": vision["stage_label"],
+            "readiness_percent": vision["readiness_percent"],
+            "visual_evidence": vision["visual_evidence"],
+            "confidence": vision["confidence"],
+            "detected_equipment": {
+                entry["label_ru"]: entry["count"] for entry in equipment_for_comment
+            },
+        }
         try:
-            assessment = assess_photo(image_path, image_sha256=image_sha256)
-            vision = asdict(assessment)
-        except Exception:
-            logger.exception("Демонстрационная оценка снимка не выполнена")
-            vision = None
-
-        if vision and vision.get("available"):
-            payload = {
-                "stage": vision["stage_label"],
-                "readiness_percent": vision["readiness_percent"],
-                "visual_evidence": vision["visual_evidence"],
-                "confidence": vision["confidence"],
-                "detected_equipment": {
-                    entry["label_ru"]: entry["count"] for entry in counts.values()
-                },
+            result = build_photo_comment(payload)
+            comment = {
+                "available": result.available,
+                "text": result.text,
+                "model": result.model,
+                "cached": result.cached,
+                "error": result.error,
             }
-            try:
-                result = build_photo_comment(payload)
-                comment = {
-                    "available": result.available,
-                    "text": result.text,
-                    "model": result.model,
-                    "cached": result.cached,
-                    "error": result.error,
-                }
-            except Exception:
-                logger.exception("Демонстрационный комментарий не сформирован")
-                comment = {"available": False, "text": "", "error": "внутренняя ошибка"}
+        except Exception:
+            logger.exception("Демонстрационный комментарий не сформирован")
+            comment = {"available": False, "text": "", "error": "внутренняя ошибка"}
 
     # По каким из найденных классов у нас есть измеренные проблемы качества.
     # Показать посетителю «Самосвал × 25», зная из собственного замера, что точность
@@ -253,6 +328,7 @@ def analyze(image_path: Path, image_sha256: str) -> dict:
             for d in detections
         ],
         "equipment_counts": sorted(counts.values(), key=lambda e: -e["max_confidence"]),
+        "ai_equipment": ai_equipment,
         "known_limitations": limitations,
         "vision": vision,
         "comment": comment,

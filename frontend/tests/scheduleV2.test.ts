@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { scheduleRows, timelineGeometry, durationDays, safeCsvCell, dependencyCycle } from "../src/components/scheduleV2Model.ts";
+const stage=(id:string,parent:string|null=null,start="2026-01-01",end="2026-01-03")=>({stage_id:id,parent_id:parent,work_name:id,zone_id:"zone",planned_start_date:start,planned_end_date:end,projected_finish_date:end,predecessor_ids:[],state:"",is_critical:false} as any);
+test("tree preserves hierarchy and collapse while search exposes ancestors",()=>{const items=[stage("parent"),stage("child","parent"),stage("other")];assert.deepEqual(scheduleRows(items,new Set(["parent"])).map(r=>r.stage.stage_id),["parent","other"]);assert.deepEqual(scheduleRows(items,new Set(["parent"]),s=>s.stage_id==="child").map(r=>r.stage.stage_id),["parent","child"]);});
+test("inclusive UTC durations work over leap days",()=>{assert.equal(durationDays("2024-02-28","2024-03-01"),3);assert.equal(durationDays("2026-01-01","2026-01-01"),1);});
+test("timeline includes forecast and never allocates unbounded widths",()=>{const item=stage("a");item.projected_finish_date="2026-02-01";const g=timelineGeometry([item],6,600,false);assert.ok(g.to>=Date.parse("2026-02-02T00:00:00Z"));assert.ok(g.width>=600);assert.ok(timelineGeometry([stage("huge",null,"1900-01-01","9999-01-01")],24,600,false).width<=40000);assert.ok(timelineGeometry([],6,600,false).width>0);});
+test("CSV escapes formulas and quotes",()=>{assert.equal(safeCsvCell("=SUM(A1)"),'"\'=SUM(A1)"');assert.equal(safeCsvCell('a"b'),'"a""b"');});
+test("dependency cycle detection distinguishes valid chains",()=>{assert.equal(dependencyCycle({a:[],b:["a"]}),false);assert.equal(dependencyCycle({a:["b"],b:["a"]}),true);});
+test("malformed tree cannot recurse forever",()=>{assert.equal(scheduleRows([stage("a","b"),stage("b","a")],new Set()).length,2);});

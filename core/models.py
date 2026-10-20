@@ -232,6 +232,10 @@ class Stage(models.Model):
     work_name = models.CharField("Наименование работы", max_length=300)
     start_date = models.DateField("Начало")
     end_date = models.DateField("Окончание")
+    verified_progress_percent = models.FloatField("Подтверждённый физический прогресс, %", null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    verified_progress_date = models.DateField("Дата замера прогресса", null=True, blank=True)
+    verified_progress_note = models.TextField("Основание подтверждения прогресса", blank=True)
+    expected_finish_date = models.DateField("Ожидаемое окончание по оценке ответственного", null=True, blank=True)
     technology_assumption = models.TextField(
         "Технологическое допущение",
         blank=True,
@@ -359,6 +363,7 @@ class FrameZone(models.Model):
     )
     name = models.CharField("Название", max_length=200)
     kind = models.CharField("Тип зоны", max_length=16, choices=Kind.choices, default=Kind.WORK)
+    color = models.CharField("Цвет зоны", max_length=7, blank=True, default="")
     stage = models.ForeignKey(
         "Stage",
         on_delete=models.SET_NULL,
@@ -534,6 +539,9 @@ class Observation(models.Model):
     image_path = models.CharField("Путь к файлу снимка", max_length=500)
     image_sha256 = models.CharField("SHA-256 снимка", max_length=64, db_index=True)
     observed_date = models.DateField("Дата съёмки", null=True, blank=True)
+    captured_at = models.DateTimeField("Подтверждённое время съёмки", null=True, blank=True)
+    analysis_history = models.JSONField("Предыдущие версии анализа", default=list, blank=True)
+    ai_analysis = models.JSONField("Состояние дополнительного анализа", default=dict, blank=True)
     date_confirmed = models.BooleanField("Дата подтверждена", default=False)
     overall_status = models.CharField("Итоговый статус", max_length=24, choices=Status.choices)
     overall_explanation = models.TextField("Объяснение")
@@ -631,6 +639,7 @@ class StageEvaluationRecord(models.Model):
     work_name_snapshot = models.CharField("Название этапа на момент проверки", max_length=300)
     status = models.CharField("Статус", max_length=24, choices=Observation.Status.choices)
     explanation = models.TextField("Объяснение")
+    methodology_snapshot = models.JSONField("Версия правила и основания подсчёта", default=dict, blank=True)
     required_snapshot = models.JSONField("Требуемая техника (снимок)", default=list)
     allowed_snapshot = models.JSONField("Допустимая техника (снимок)", default=list)
     quantity_checks_snapshot = models.JSONField(
@@ -748,6 +757,7 @@ class Deviation(models.Model):
         verbose_name="Снимок «после» (устранено)",
     )
     occurrence_count = models.PositiveIntegerField("Сколько снимков подтвердили", default=1)
+    engineering_review = models.JSONField("Инженерная проверка обстоятельств", default=dict, blank=True)
 
     assignee = models.ForeignKey(
         User,
@@ -777,6 +787,23 @@ class Deviation(models.Model):
 
     def __str__(self) -> str:
         return f"{self.title} ({self.get_status_display()})"
+
+
+class DeviationEvidence(models.Model):
+    """Immutable evaluation evidence; duplicate uploads cannot strengthen a finding."""
+    deviation = models.ForeignKey(Deviation, on_delete=models.CASCADE, related_name="evidence_records")
+    observation = models.ForeignKey(Observation, on_delete=models.PROTECT, related_name="evidence_records")
+    outcome = models.CharField(max_length=16)
+    independent = models.BooleanField(default=False)
+    sequence_count = models.PositiveIntegerField(default=0)
+    reason = models.TextField()
+    rule_fingerprint = models.CharField(max_length=64, blank=True)
+    methodology_snapshot = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['deviation','observation'], name='unique_deviation_observation_proof')]
+        ordering = ['created_at','pk']
 
 
 class ProjectEvent(models.Model):
@@ -843,7 +870,7 @@ class ProjectEvent(models.Model):
 
 class Correction(models.Model):
     """Исправление инженера по одной детекции — обучающий пример для
-    классификатора-корректора (см. модуль «AI Learning» в плане).
+    классификатора-корректора (см. модуль «Learning» в плане).
 
     Единственный в проекте реально размеченный человеком датасет: у исходных
     100 снимков (data/config/splits.json) нет разметки классов, поэтому
@@ -905,6 +932,7 @@ class ModelVersion(models.Model):
         PRODUCTION = "production", "Рабочая версия"
         ARCHIVED = "archived", "Архив"
 
+    site = models.ForeignKey(ConstructionSite, on_delete=models.PROTECT, null=True, blank=True, related_name="correction_model_versions")
     version_label = models.CharField("Версия", max_length=32)
     status = models.CharField("Статус", max_length=16, choices=Status.choices, default=Status.CANDIDATE)
     artifact_path = models.CharField("Путь к артефакту классификатора", max_length=500, blank=True)
@@ -934,6 +962,52 @@ class ModelVersion(models.Model):
 
     def __str__(self) -> str:
         return f"{self.version_label} ({self.get_status_display()})"
+
+
+class CorrectionTrainingRun(models.Model):
+    site = models.ForeignKey(ConstructionSite, on_delete=models.PROTECT, related_name="correction_training_runs")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    status = models.CharField(max_length=16, default="queued")
+    active_slot = models.PositiveSmallIntegerField(null=True, blank=True, unique=True)
+    correction_ids = models.JSONField(default=list)
+    task_ids = models.JSONField(default=list)
+    model_version = models.ForeignKey(ModelVersion, on_delete=models.PROTECT, null=True, blank=True)
+    error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class CorrectionTask(models.Model):
+    class Status(models.TextChoices):
+        TODO = "todo", "К разбору"
+        IN_PROGRESS = "in_progress", "В работе"
+        READY = "ready", "Готово к обучению"
+        TRAINING = "training", "На дообучении"
+        TRAINED = "trained", "Обучено"
+
+    site = models.ForeignKey(ConstructionSite, on_delete=models.PROTECT, related_name="correction_tasks")
+    observation = models.ForeignKey(Observation, on_delete=models.PROTECT, related_name="correction_tasks")
+    title = models.CharField(max_length=255)
+    reason = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.TODO)
+    assignee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    annotations = models.JSONField(default=list)
+    empty_scene = models.BooleanField(default=False)
+    revision = models.PositiveIntegerField(default=1)
+    position = models.BigIntegerField(default=0)
+    corrections = models.ManyToManyField(Correction, blank=True, related_name="review_tasks")
+    training_run = models.ForeignKey(CorrectionTrainingRun, on_delete=models.PROTECT, null=True, blank=True)
+    history = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["position", "-created_at", "-id"]
+        constraints = [models.UniqueConstraint(fields=["site", "observation"], name="correction_task_site_observation_unique")]
 
 
 class MatchingSettings(models.Model):
@@ -1014,3 +1088,14 @@ class WeatherRiskRecord(models.Model):
 
     def __str__(self) -> str:
         return f"{self.stage.work_name}: {self.factor} {self.start_time_utc:%d.%m %H:%M}"
+
+
+class RegistrationRequest(models.Model):
+    """Pending registration. Mail delivery is a deliberate stub; grants no access."""
+    email = models.EmailField(max_length=254, unique=True)
+    full_name = models.CharField(max_length=150)
+    password_hash = models.CharField(max_length=256)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]

@@ -1,27 +1,9 @@
-"""Жизненный цикл отклонения: от выявления до подтверждения устранения.
+"""Формирование предупреждений и история их обработки.
 
-Раньше отклонение было свойством снимка. Это удобно для одного кадра и
-бесполезно для управления стройкой: десять кадров подряд с одной и той же
-нехваткой техники давали десять одинаковых записей, а вопрос «устранено ли»
-не имел ответа в принципе.
-
-Здесь снимок превращается в набор устойчивых находок, каждая со своим ключом
-совпадения. Находка с известным ключом обновляет существующее отклонение, а
-не создаёт новое. Отклонение, которое на новом снимке той же зоны больше не
-воспроизводится, закрывается автоматически, и этот снимок становится
-доказательством «после» — прикреплять его руками не нужно.
-
-Два правила, которые важнее удобства:
-
-* закрывать отклонение можно только по снимку, на котором вообще удалось
-  что-то установить. Кадр со статусом «недостаточно данных» ничего не
-  доказывает, и молчаливое закрытие по нему было бы подлогом. Открывать по
-  такому кадру при этом можно, и эта асимметрия намеренна: открытое
-  отклонение — это просьба проверить, закрытое — утверждение, что всё в порядке,
-  и цена ошибки у них разная;
-* отклонения, не относящиеся к содержанию кадра (непокрытая камерами зона),
-  автоматически не закрываются по чужой зоне — их снимает только появление
-  разметки.
+Повторная находка обновляет существующее отклонение. Пригодный контрольный
+снимок сохраняет результат проверки, но не закрывает обращение автоматически.
+Независимость наблюдений проверяет evidence.py; закрытие и инженерная проверка
+учитываются отдельно от числа визуальных подтверждений.
 """
 
 from __future__ import annotations
@@ -81,6 +63,8 @@ def findings_from_evaluation(evaluation, *, critical_stage_ids: set[str] | None 
     findings: list[Finding] = []
 
     for item in evaluation.stage_evaluations:
+        if item.status == 'insufficient_data':
+            continue
         critical = item.stage_id in critical_stage_ids
         # Подписи требуемых классов берутся из quantity_checks (они там есть даже при
         # нулевом факте, см. matching.py::_evaluate_stage) — иначе в титул/сообщении
@@ -136,6 +120,11 @@ def findings_from_evaluation(evaluation, *, critical_stage_ids: set[str] | None 
                 )
             )
 
+    for finding in findings:
+        evaluated = next((e for e in evaluation.stage_evaluations if e.stage_id == finding.stage_id), None)
+        fingerprint = evaluated.methodology.get('rule_fingerprint') if evaluated else None
+        if fingerprint:
+            finding.signature += '|' + fingerprint[:16]
     return findings
 
 
@@ -215,9 +204,9 @@ def _sync(
 
     from core.models import Deviation, Observation, ProjectEvent, Stage, Zone
 
-    zone = Zone.objects.filter(external_id=zone_external_id).first()
+    zone = Zone.objects.filter(external_id=zone_external_id, **({"site":site} if site is not None else {"site__is_legacy":True})).first()
     observation = Observation.objects.filter(pk=observation_id).first()
-    if zone is None or observation is None:
+    if zone is None or observation is None or observation.zone_id != zone.pk:
         return {"available": False, "opened": [], "repeated": [], "auto_resolved": []}
 
     project = site if site is not None else zone.site
@@ -231,6 +220,9 @@ def _sync(
     now = datetime.now(UTC)
 
     with transaction.atomic():
+        if connection.features.has_select_for_update:
+            # Lock a row that exists even before the first alert is created.
+            Zone.objects.select_for_update().get(pk=zone.pk)
         open_qs = Deviation.objects.filter(zone=zone, status__in=Deviation.OPEN_STATUSES)
         # Блокировка строк нужна на Postgres, где два снимка одной зоны могут
         # обрабатываться параллельно и создать дубликаты. SQLite её не поддерживает и
@@ -244,7 +236,11 @@ def _sync(
             existing = open_deviations.get(finding.signature)
             if existing is not None:
                 existing.last_observation = observation
-                existing.occurrence_count += 1
+                from .evidence import record_evidence
+                already_recorded = existing.evidence_records.filter(observation=observation).exists()
+                proof = record_evidence(existing, observation, present=True, observation_status=observation_status)
+                # Journal occurrences and independent proof are deliberately different counters.
+                existing.occurrence_count += int(not already_recorded)
                 existing.message = finding.message
                 existing.severity = finding.severity
                 existing.save(
@@ -261,7 +257,7 @@ def _sync(
                     kind=ProjectEvent.Kind.DEVIATION_REPEATED,
                     title=existing.title,
                     message=(
-                        f"Отклонение подтверждено ещё одним снимком (всего {existing.occurrence_count})."
+                        f"Повторная проверка: {proof.reason}. Независимая серия: {proof.sequence_count}."
                     ),
                     zone=zone,
                     observation=observation,
@@ -294,46 +290,20 @@ def _sync(
                 observation=observation,
                 deviation=deviation,
             )
+            from .evidence import record_evidence
+            record_evidence(deviation, observation, present=True, observation_status=observation_status)
             opened.append({"id": deviation.pk, "title": deviation.title})
 
-        # Автозакрытие: то, что было открыто по этой зоне и не повторилось сейчас.
-        # Только по снимку, который что-то доказывает: «недостаточно данных» не
-        # доказывает ничего, и закрывать по нему нельзя.
-        if observation_status != "insufficient_data":
-            current_signatures = {f.signature for f in findings}
-            for signature, deviation in open_deviations.items():
-                if signature in current_signatures or deviation.kind in _NOT_FRAME_SCOPED:
-                    continue
-                deviation.status = Deviation.Status.RESOLVED
-                deviation.resolved_observation = observation
-                deviation.resolved_at = now
-                deviation.auto_resolved = True
-                deviation.resolution_note = (
-                    "Закрыто автоматически: на следующем снимке зоны отклонение не воспроизвелось. "
-                    "Требуется подтверждение инженером."
-                )
-                deviation.save(
-                    update_fields=[
-                        "status",
-                        "resolved_observation",
-                        "resolved_at",
-                        "auto_resolved",
-                        "resolution_note",
-                        "updated_at",
-                    ]
-                )
-                ProjectEvent.objects.create(
-                    site=project,
-                    kind=ProjectEvent.Kind.DEVIATION_AUTO_RESOLVED,
-                    title=deviation.title,
-                    message=deviation.resolution_note,
-                    old_value=Deviation.Status.DETECTED.label,
-                    new_value=Deviation.Status.RESOLVED.label,
-                    zone=zone,
-                    observation=observation,
-                    deviation=deviation,
-                )
-                auto_resolved.append({"id": deviation.pk, "title": deviation.title})
+        # A clean frame is evidence, not an engineering decision to close the issue.
+        current_signatures = {f.signature for f in findings}
+        from .evidence import record_evidence
+        for signature, deviation in open_deviations.items():
+            if signature not in current_signatures and deviation.kind not in _NOT_FRAME_SCOPED:
+                proof = record_evidence(deviation, observation, present=False, observation_status=observation_status)
+                if proof.independent:
+                    ProjectEvent.objects.create(site=project, kind=ProjectEvent.Kind.OBSERVATION_ANALYZED,
+                        title='Контрольная проверка отклонения', message=proof.reason + '. Автоматическое закрытие не выполняется.',
+                        zone=zone, observation=observation, deviation=deviation)
 
         ProjectEvent.objects.create(
             site=project,
@@ -356,7 +326,10 @@ def _sync(
 
 
 def _deviation_to_dict(item) -> dict:
+    from .evidence import proof_summary
     return {
+        "proof": proof_summary(item),
+        "engineering_review": item.engineering_review,
         "id": item.pk,
         "kind": item.kind,
         "kind_label_ru": item.get_kind_display(),
@@ -393,7 +366,11 @@ def list_deviations(*, site, status: str | None = None, limit: int = 100) -> dic
     from core.models import Deviation
 
     site_filter = {"zone__site": site} if site is not None else {"zone__site__is_legacy": True}
-    qs = Deviation.objects.filter(**site_filter).select_related("zone", "stage", "assignee")
+    from django.db.models import Prefetch
+    from core.models import DeviationEvidence
+    qs = Deviation.objects.filter(**site_filter).select_related("zone", "stage", "assignee").prefetch_related(
+        Prefetch('evidence_records', queryset=DeviationEvidence.objects.select_related('observation').defer(
+            'methodology_snapshot','observation__analysis_history','observation__ai_analysis','observation__overall_explanation')))
     counts = {key: 0 for key, _ in Deviation.Status.choices}
     for value in qs.values_list("status", flat=True):
         counts[value] = counts.get(value, 0) + 1
@@ -411,6 +388,60 @@ def list_deviations(*, site, status: str | None = None, limit: int = 100) -> dic
         "counts": counts,
         "statuses": [{"key": k, "label_ru": v} for k, v in Deviation.Status.choices],
     }
+
+
+def get_deviation(*, deviation_id: int, site) -> dict | None:
+    """Project-scoped evidence. Quantities come from the original stage check, never prose."""
+    if not django_bridge.ensure_django_ready():
+        return None
+    from core.models import Deviation, ProjectEvent
+
+    item = Deviation.objects.filter(pk=deviation_id, zone__site=site).select_related(
+        "zone", "stage", "assignee", "first_observation__camera", "last_observation__camera", "resolved_observation__camera"
+    ).prefetch_related('evidence_records__observation', 'first_observation__detections',
+                       'last_observation__detections', 'resolved_observation__detections').first()
+    if item is None:
+        return None
+    checks = []
+    methodology = {}
+    if item.first_observation and item.first_observation.zone_id == item.zone_id and item.stage_id:
+        evaluation = item.first_observation.stage_evaluations.filter(stage_id=item.stage_id).first()
+        if evaluation:
+            methodology = evaluation.methodology_snapshot
+            checks = [c for c in evaluation.quantity_checks_snapshot
+                      if not c.get("satisfied") and (not item.equipment or
+                         c.get("class_key") in item.equipment or c.get("label_ru") in item.equipment)]
+    first_proof = item.evidence_records.order_by('pk').first()
+    if first_proof and first_proof.methodology_snapshot:
+        methodology = first_proof.methodology_snapshot
+        checks = [c for c in methodology.get('quantity_checks', []) if not c.get('satisfied') and
+            (not item.equipment or c.get('class_key') in item.equipment or c.get('label_ru') in item.equipment)]
+    evidence, seen = [], set()
+    for label, observation in [("Выявлено", item.first_observation),
+                               ("Последняя фиксация", item.last_observation),
+                               ("Проверка устранения", item.resolved_observation)]:
+        if observation and observation.pk not in seen and observation.zone_id == item.zone_id:
+            seen.add(observation.pk)
+            evidence.append({"observation_id": str(observation.pk), "label": label,
+                "observed_date": observation.observed_date.isoformat() if observation.observed_date else None,
+                "date_confirmed": observation.date_confirmed, "created_at": observation.created_at.isoformat(),
+                "image_width": observation.image_width, "image_height": observation.image_height,
+                "camera_id": observation.camera.external_id if observation.camera and observation.camera.zone_id == item.zone_id else None,
+                "camera_name": observation.camera.name if observation.camera and observation.camera.zone_id == item.zone_id else None,
+                # These are the observation's saved detections, not a reconstruction of
+                # historical methodology (which can predate a reanalysis).
+                "captured_at": observation.captured_at.isoformat() if observation.captured_at else None,
+                "detections_source": "observation",
+                "detections": [{"id": d.pk, "class_key": d.class_key, "label_ru": d.label_ru,
+                    "confidence": d.confidence, "bbox": d.bbox, "ambiguous": d.ambiguous,
+                    "activity": d.activity, "activity_reason": d.activity_reason}
+                    for d in observation.detections.all()]})
+    events = ProjectEvent.objects.filter(site=site, deviation=item).select_related("actor").order_by("-created_at")[:30]
+    return {"deviation": _deviation_to_dict(item), "quantity_checks": checks, "evidence": evidence, "methodology": methodology,
+        "events": [{"id": e.pk, "title": e.title, "kind_label_ru": e.get_kind_display(),
+                    "created_at": e.created_at.isoformat(), "message": e.message,
+                    "old_value": e.old_value, "new_value": e.new_value,
+                    "actor": e.actor.get_full_name() or e.actor.username if e.actor else None} for e in events]}
 
 
 def change_status(*, deviation_id: int, site, status: str, user_id: int, assignee_id: int | None, note: str) -> dict | None:

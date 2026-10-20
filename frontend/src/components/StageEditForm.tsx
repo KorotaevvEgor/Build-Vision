@@ -6,6 +6,8 @@ import type {
   ZoneDetail,
 } from "../api";
 import "./StageEditForm.css";
+import {useProject} from "../ProjectContext";
+import {projectTimeZone} from "./projectTime";
 
 interface Props {
   mode: "create" | "edit";
@@ -47,6 +49,7 @@ export function StageEditForm({
   onCancel,
   onDelete,
 }: Props) {
+  const {project}=useProject();
   const [workName, setWorkName] = useState(initial?.work_name ?? "");
   const [workCode, setWorkCode] = useState(initial?.work_code ?? "");
   const [zoneId, setZoneId] = useState(initial?.zone_id ?? defaultZoneId);
@@ -61,6 +64,12 @@ export function StageEditForm({
   const [allowed, setAllowed] = useState<string[]>(initial?.allowed ?? []);
   const [alternativesNote, setAlternativesNote] = useState(initial?.alternatives_note ?? "");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [progress, setProgress] = useState(initial?.verified_progress_percent?.toString() ?? "");
+  const [progressDate, setProgressDate] = useState(initial?.verified_progress_date ?? "");
+  const [progressNote, setProgressNote] = useState(initial?.verified_progress_note ?? "");
+  const [expectedFinish, setExpectedFinish] = useState(initial?.expected_finish_date ?? "");
+  const hasProgress = progress !== "" || progressDate !== "" || progressNote.trim() !== "" || expectedFinish !== "";
+  const progressValid = !hasProgress || (progress !== "" && Number.isFinite(Number(progress)) && Number(progress) >= 0 && Number(progress) <= 100 && progressDate !== "" && progressNote.trim() !== "" && (!expectedFinish || expectedFinish >= progressDate) && (Number(progress) !== 100 || !expectedFinish || expectedFinish === progressDate));
 
   const togglePredecessor = (id: string) => {
     setPredecessorIds((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
@@ -84,11 +93,12 @@ export function StageEditForm({
   };
 
   const valid =
-    workName.trim().length > 0 && zoneId && startDate && endDate && endDate >= startDate && required.every((r) => r.class_key);
+    progressValid && workName.trim().length > 0 && zoneId && startDate && endDate && endDate >= startDate && required.every((r) => r.class_key);
 
   const handleSubmit = () => {
     if (!valid) return;
     onSubmit({
+      project_timezone: projectTimeZone(project),
       work_name: workName.trim(),
       work_code: workCode.trim(),
       zone_id: zoneId,
@@ -100,6 +110,10 @@ export function StageEditForm({
       required: required.map((r) => ({ class_key: r.class_key, min_quantity: r.min_quantity })),
       allowed,
       alternatives_note: alternativesNote.trim(),
+      verified_progress_percent: progress === "" ? null : Number(progress),
+      verified_progress_date: progressDate || null,
+      verified_progress_note: progressNote.trim(),
+      expected_finish_date: expectedFinish || null,
     });
   };
 
@@ -230,6 +244,16 @@ export function StageEditForm({
         </label>
       </div>
 
+      <div className="sk-stage-form__section">
+        <h3>Подтверждение физических объёмов</h3>
+        <p>Ответственный вводит фактически выполненную долю работ и основание замера. 100% подтверждает завершение. Проверки техники эти поля не заполняют.</p>
+        <label>Физическая готовность, %<input type="number" min="0" max="100" step="0.1" value={progress} onChange={e=>setProgress(e.target.value)}/></label>
+        <label>Дата замера<input type="date" value={progressDate} onChange={e=>setProgressDate(e.target.value)}/></label>
+        <label>Основание: акт, замер объёмов, ответственный<textarea maxLength={4000} value={progressNote} onChange={e=>setProgressNote(e.target.value)} rows={3}/></label>
+        <label>Ожидаемая дата окончания по оценке ответственного<input type="date" value={expectedFinish} onChange={e=>setExpectedFinish(e.target.value)}/></label>
+        <p>Без ожидаемой даты строится сценарий сохранения среднего темпа от планового начала до замера. Для нулевой готовности темп не определяется.</p>
+        {!progressValid&&<p className="sk-stage-form__error">Укажите готовность от 0 до 100%, дату и основание. Окончание должно быть не раньше замера; при 100% — в дату подтверждения.</p>}
+      </div>
       {error && <p className="sk-stage-form__error">{error}</p>}
 
       <div className="sk-stage-form__actions">

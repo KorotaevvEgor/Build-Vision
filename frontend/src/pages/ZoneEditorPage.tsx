@@ -12,18 +12,7 @@ import {
   type FrameZonesResponse,
 } from "../api";
 import "./ZoneEditorPage.css";
-
-/**
- * Цвет по типу зоны: один и тот же для контура, заливки и подписи, чтобы
- * назначение зоны читалось с кадра без обращения к легенде.
- */
-const ZONE_COLORS: Record<FrameZoneKind, string> = {
-  work: "var(--sk-status-ok)",
-  parking: "var(--sk-accent-strong)",
-  entrance: "var(--sk-class-truck)",
-  danger: "var(--sk-status-danger)",
-  uncontrolled: "var(--sk-text-faint)",
-};
+import {frameZoneColor} from "../frameZoneColors";
 
 /** Меньше трёх точек не образуют многоугольник — то же ограничение стоит на сервере. */
 const MIN_POINTS = 3;
@@ -39,14 +28,16 @@ function pointsAttribute(polygon: Point[]): string {
   return polygon.map(([x, y]) => `${x},${y}`).join(" ");
 }
 
-export function ZoneEditorPage() {
+export function ZoneEditorPage({cameraId:providedCameraId,embedded=false}:{cameraId?:string;embedded?:boolean}={}) {
   const { projectId } = useProject();
-  const { cameraId = "" } = useParams<{ cameraId: string }>();
+  const { cameraId:routeCameraId = "" } = useParams<{ cameraId: string }>();
+  const cameraId=providedCameraId??routeCameraId;
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
 
   const [data, setData] = useState<FrameZonesResponse | null>(null);
   const [zones, setZones] = useState<FrameZone[]>([]);
+  const [draftColor,setDraftColor] = useState("#34d399");
   const [draft, setDraft] = useState<Point[]>([]);
   const [imageSize, setImageSize] = useState<ImageSize | null>(null);
   const [imageError, setImageError] = useState(false);
@@ -130,6 +121,7 @@ export function ZoneEditorPage() {
       {
         name: `Зона ${current.length + 1}`,
         kind: "work",
+        color: draftColor,
         polygon: draft,
         reference_width: imageSize.width,
         reference_height: imageSize.height,
@@ -171,11 +163,11 @@ export function ZoneEditorPage() {
   };
 
   return (
-    <div className="sk-zone-editor">
-      <Link to={`/projects/${projectId}/cameras/${cameraId}`} className="sk-zone-editor__back">
+    <div className={`sk-zone-editor${embedded?" sk-zone-editor--embedded":""}`}>
+      {!embedded&&<Link to={`/projects/${projectId}/cameras/${cameraId}`} className="sk-back-button">
         ← Камера
-      </Link>
-      <h1>Зоны на кадре</h1>
+      </Link>}
+      {embedded?<h2>Зоны на кадре</h2>:<h1>Зоны на кадре</h1>}
       <p className="sk-table__muted">
         {data ? `${data.camera_name} · участок ${data.zone_id}` : "Загрузка…"}
       </p>
@@ -219,7 +211,7 @@ export function ZoneEditorPage() {
                     onClick={addPoint}
                   >
                     {zones.map((zone, index) => (
-                      <g key={zone.id ?? `zone-${index}`} style={{ color: ZONE_COLORS[zone.kind] }}>
+                      <g key={zone.id ?? `zone-${index}`} style={{ color: frameZoneColor(zone) }}>
                         <polygon
                           className="sk-zone-editor__polygon"
                           points={pointsAttribute(zone.polygon)}
@@ -235,7 +227,7 @@ export function ZoneEditorPage() {
                     ))}
 
                     {draft.length > 0 && (
-                      <g className="sk-zone-editor__draft">
+                      <g className="sk-zone-editor__draft" style={{color:draftColor}}>
                         <polyline
                           className="sk-zone-editor__draft-line"
                           points={pointsAttribute(draft)}
@@ -257,6 +249,7 @@ export function ZoneEditorPage() {
 
               {isAdmin && (
                 <div className="sk-zone-editor__toolbar">
+                  <label className="sk-zone-color-control">Цвет новой зоны<input type="color" aria-label="Цвет новой зоны" value={draftColor} onInput={e=>setDraftColor(e.currentTarget.value)} onChange={e=>setDraftColor(e.target.value)}/></label>
                   <span className="sk-table__muted">
                     {draft.length === 0
                       ? "Кликайте по кадру, чтобы обвести зону"
@@ -298,11 +291,7 @@ export function ZoneEditorPage() {
 
           {zones.map((zone, index) => (
             <div key={zone.id ?? `new-${index}`} className="sk-zone-item">
-              <span
-                className="sk-zone-item__swatch"
-                style={{ background: ZONE_COLORS[zone.kind] }}
-                aria-hidden="true"
-              />
+              <input type="color" className="sk-zone-item__swatch" aria-label={`Цвет зоны «${zone.name}»`} title="Выбрать цвет зоны" value={frameZoneColor(zone)} disabled={!isAdmin || saving} onInput={e=>updateZone(index,{color:e.currentTarget.value})} onChange={e=>updateZone(index,{color:e.target.value})}/>
               <div className="sk-zone-item__fields">
                 <input
                   type="text"

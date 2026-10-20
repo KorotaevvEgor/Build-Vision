@@ -13,12 +13,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import date
 
 from .detector import Detection
 from .rules_config import EquipmentRules, StageRule
 from .schedule import Schedule, Stage
+from .matching_evidence import select_work_detections
 
 STATUS_NO_DEVIATION = "no_deviation"
 STATUS_POSSIBLE_DEVIATION = "possible_deviation"
@@ -38,6 +39,8 @@ class QuantityCheck:
     required_qty: int
     actual_qty: int
     satisfied: bool
+    observed_qty: int = 0
+    excluded_qty: int = 0
 
 
 @dataclass
@@ -55,6 +58,7 @@ class StageEvaluation:
     explanation_ru: str
     evidence: list[Detection] = field(default_factory=list)
     quantity_checks: list[QuantityCheck] = field(default_factory=list)
+    methodology: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -220,6 +224,8 @@ def evaluate_observation(
     detections: list[Detection],
     schedule: Schedule,
     rules: EquipmentRules,
+    frame_zones: list[dict] | None = None,
+    analysis_context: dict | None = None,
 ) -> ObservationEvaluation:
     if not date_confirmed or observed_date is None:
         return ObservationEvaluation(
@@ -273,9 +279,23 @@ def evaluate_observation(
                 )
             )
             continue
-        stage_evaluations.append(
-            _evaluate_stage(stage, rule, detections, zone_allowed, rules.confusable_class_pairs)
-        )
+        shared_classes = {key for key in rule.required if sum(
+            key in rules.stage_rules[s.stage_id].required for s in active_stages if s.stage_id in rules.stage_rules
+        ) > 1}
+        eligible, methodology = select_work_detections(stage, rule, detections, frame_zones, shared_classes, analysis_context)
+        result = _evaluate_stage(stage, rule, eligible, zone_allowed, rules.confusable_class_pairs)
+        result.methodology = methodology
+        for check in result.quantity_checks:
+            check.observed_qty = sum(d.in_taxonomy and not d.ambiguous and d.class_key == check.class_key for d in detections)
+            check.excluded_qty = check.observed_qty - check.actual_qty
+        if frame_zones is not None and (not methodology['coverage_verified'] or methodology['allocation_unknown']):
+            result.status = STATUS_INSUFFICIENT_DATA
+            result.status_label_ru = STATUS_LABELS_RU[result.status]
+            result.explanation_ru = ('Нет размеченного рабочего участка этой работы: отсутствие техники не доказано.'
+                if not methodology['coverage_verified'] else 'Техника видна на общем участке параллельных работ, но её назначение не определено. Уточните привязку зон к работам.')
+            result.missing_required = []
+        methodology['quantity_checks'] = [asdict(c) for c in result.quantity_checks]
+        stage_evaluations.append(result)
 
     priority = {STATUS_POSSIBLE_DEVIATION: 0, STATUS_INSUFFICIENT_DATA: 1, STATUS_NO_DEVIATION: 2}
     overall_status = min((e.status for e in stage_evaluations), key=lambda s: priority[s])

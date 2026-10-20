@@ -17,6 +17,7 @@ from pathlib import Path
 from . import django_bridge, observation_ai
 from .app_context import get_context
 from .detector import get_detector
+from .analysis_context import detector_context
 from .matching import evaluate_observation
 
 logger = logging.getLogger(__name__)
@@ -60,7 +61,8 @@ def reanalyze_all_observations() -> dict:
             if not image_path.is_file():
                 continue
             try:
-                detections = detector.detect(image_path, apply_correction_classifier=site.is_legacy)
+                execution_trace = {}
+                detections = detector.detect(image_path, site_id=site.pk, execution_trace=execution_trace)
                 camera_external_id = observation.camera.external_id if observation.camera_id else None
                 image_size = (
                     (observation.image_width, observation.image_height)
@@ -72,6 +74,8 @@ def reanalyze_all_observations() -> dict:
                     camera_external_id=camera_external_id,
                     image_size=image_size,
                     observed_date=observation.observed_date if observation.date_confirmed else None,
+                    captured_at=observation.captured_at,
+                    image_sha256=observation.image_sha256,
                 )
                 evaluation = evaluate_observation(
                     zone_id=observation.zone.external_id,
@@ -80,8 +84,10 @@ def reanalyze_all_observations() -> dict:
                     detections=detections,
                     schedule=ctx.schedule,
                     rules=ctx.rules,
+                    frame_zones=observation_ai.frame_zones_module.load_frame_zones(camera_external_id) if camera_external_id else [],
+                    analysis_context=detector_context(detector, execution_trace),
                 )
-                persistence_module.replace_observation_results(observation, evaluation)
+                persistence_module.replace_observation_results(observation, evaluation, execution_trace=execution_trace)
                 updated += 1
             except Exception:
                 errors += 1
