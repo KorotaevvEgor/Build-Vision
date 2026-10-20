@@ -6,7 +6,7 @@
 
 BuildVision сопоставляет технику в рабочих зонах с требованиями календарного плана. Инженер видит не только расхождение, но и его основания: исходный кадр, засчитанные объекты, версию правила, повторные наблюдения и историю решений.
 
-[Открыть систему](https://eksupernova.su) · [Документация](docs/README.md) · [Руководство в PDF](frontend/public/BuildVision-documentation.pdf) · [Презентация](docs/BuildVision_defense.pptx)
+[Открыть систему](https://eksupernova.su) · [Документация](docs/README.md) · [Руководство в PDF](frontend/public/BuildVision-documentation.pdf) · [Презентация](docs/Supernova.pdf)
 
 ## Основной сценарий
 
