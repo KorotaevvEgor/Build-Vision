@@ -21,7 +21,7 @@ services:
       retries: 5
 
   # FastAPI: детекция, анализ, весь API для фронтенда.
-  app:
+  app: &capture-app-base
     build:
       context: .
       dockerfile: Dockerfile
@@ -33,6 +33,9 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-stroykontrol}:${POSTGRES_PASSWORD:-stroykontrol}@db:5432/${POSTGRES_DB:-stroykontrol}
       DJANGO_SETTINGS_MODULE: admin_panel.settings
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      SK_STREAM_SECRET_KEY: ${SK_STREAM_SECRET_KEY:-}
+      SK_STREAM_ALLOWED_HOSTS: ${SK_STREAM_ALLOWED_HOSTS:-}
+      SK_STREAM_ALLOWED_CIDRS: ${SK_STREAM_ALLOWED_CIDRS:-}
       DJANGO_DEBUG: "false"
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-*}
       # SameSite=None+Secure в проде нужны, чтобы мобильное приложение (другой origin,
@@ -68,6 +71,21 @@ services:
       retries: 3
       start_period: 30s
 
+  stream-worker:
+    profiles: ["video-capture"]
+    <<: *capture-app-base
+    ports: []
+    command: ["python", "manage.py", "run_stream_worker"]
+    cpus: 1.0
+    mem_limit: 1536m
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,sys,django;os.environ.setdefault('DJANGO_SETTINGS_MODULE','admin_panel.settings');django.setup();sys.path.insert(0,'backend');from app.streams.service import worker_health;from datetime import datetime,UTC;sys.exit(0 if worker_health(datetime.now(UTC))['available'] else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
   # Django admin: редактирование справочников, правил, графика и просмотр
   # истории анализа (Observation/Detection/StageEvaluationRecord). Отдельный
   # лёгкий образ без ML-зависимостей — админке они не нужны.
@@ -87,6 +105,9 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-stroykontrol}:${POSTGRES_PASSWORD:-stroykontrol}@db:5432/${POSTGRES_DB:-stroykontrol}
       DJANGO_SETTINGS_MODULE: admin_panel.settings
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      SK_STREAM_SECRET_KEY: ${SK_STREAM_SECRET_KEY:-}
+      SK_STREAM_ALLOWED_HOSTS: ${SK_STREAM_ALLOWED_HOSTS:-}
+      SK_STREAM_ALLOWED_CIDRS: ${SK_STREAM_ALLOWED_CIDRS:-}
       DJANGO_DEBUG: "false"
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-*}
       DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME:-admin}

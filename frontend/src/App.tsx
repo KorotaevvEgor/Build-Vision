@@ -89,7 +89,7 @@ function App() {
             <Route element={<GlobalShell />}>
               {/* Рабочий день сотрудника надзора начинается не со списка проектов, а со
                   сводки по всем объектам: у него их десятки, и выбирать руками нечего. */}
-              <Route index element={<Navigate to="/supervision" replace />} />
+              <Route index element={<Navigate to="/projects" replace />} />
               <Route path="supervision" element={<PageLoader><SupervisionPage /></PageLoader>} />
               <Route path="supervision/queue" element={<PageLoader><ReviewQueuePage /></PageLoader>} />
               <Route path="projects" element={<PageLoader><ProjectsPage /></PageLoader>} />

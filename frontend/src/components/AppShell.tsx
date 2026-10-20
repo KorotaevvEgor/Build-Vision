@@ -25,9 +25,6 @@ const PROJECT_NAV_ITEMS = [
  * после входа. */
 const GLOBAL_NAV_ITEMS = [
   { to: "/projects", label: "Проекты", icon: "grid" },
-  { to: "/supervision", label: "Участок надзора", icon: "home" },
-  { to: "/supervision/queue", label: "Очередь разбора", icon: "bell" },
-  { to: "/demo-analysis", label: "Разбор фотографии", icon: "scan" },
 ] as const;
 
 const ICON_PATHS: Record<(typeof PROJECT_NAV_ITEMS)[number]["icon"] | "grid" | "scan", string> = {
@@ -147,9 +144,6 @@ export function AppShell({ children, project, notificationCount = 0 }: AppShellP
                 >
                   <NavIcon name={item.icon} />
                   <span>{item.label}</span>
-                  {item.to === "/supervision/queue" && notificationCount > 0 && (
-                    <span className="sk-sidebar__badge">{notificationCount}</span>
-                  )}
                 </NavLink>
               ))}
             </nav>
@@ -161,6 +155,7 @@ export function AppShell({ children, project, notificationCount = 0 }: AppShellP
         )}
 
         <div className="sk-sidebar__footer">
+          <NavLink to="/demo-analysis" onClick={closeMobileNav} className={({isActive})=>`sk-sidebar-docs sk-sidebar-demo${isActive?" sk-sidebar-demo--active":""}`}><NavIcon name="scan"/><span>Демонстрационный<br/>разбор фотографии</span><span aria-hidden="true">↗</span></NavLink>
           <Link to="/documentation" className="sk-sidebar-docs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-2H4V4Zm9 3a3 3 0 0 1 3-3h4v15h-3a4 4 0 0 0-4 2"/></svg><span>Презентация<br/>и документация</span><span aria-hidden="true">↗</span></Link>
           <img
             className="sk-sidebar__footer-logo"
@@ -235,15 +230,6 @@ export function AppShell({ children, project, notificationCount = 0 }: AppShellP
                   >
                     Настройки профиля
                   </Link>
-                  {user.role === "admin" && (
-                    <Link
-                      to="/system/learning"
-                      className="sk-profile__menu-item"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      Центр обучения AI
-                    </Link>
-                  )}
                   <button
                     type="button"
                     className="sk-profile__menu-item"

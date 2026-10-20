@@ -25,9 +25,7 @@ import {
 import { useProject } from "../ProjectContext";
 import { DashboardGantt } from "../components/DashboardGantt";
 import { MiniSiteMap } from "../components/MiniSiteMap";
-import { EquipmentIcon } from "../components/EquipmentIcons";
 import { getDashboardDetections } from "../components/dashboardMarkup";
-import { CameraStatIcon, ChartStatIcon, WarningStatIcon } from "../components/DashboardIcons";
 import "./DashboardPage.css";
 
 const CLASS_COLOR_VARS: Record<string, string> = {
@@ -52,13 +50,11 @@ function classColor(classKey: string): string {
 const OPEN_STATUSES = new Set(["detected", "assigned"]);
 
 function StatCard({
-  icon,
   value,
   label,
   hint,
   accent,
 }: {
-  icon: ReactNode;
   value: ReactNode;
   label: string;
   hint?: string;
@@ -66,9 +62,6 @@ function StatCard({
 }) {
   return (
     <div className="sk-panel sk-stat-card">
-      <span className={`sk-stat-card__icon${accent ? ` sk-stat-card__icon--${accent}` : ""}`} aria-hidden="true">
-        {icon}
-      </span>
       <div className="sk-stat-card__copy">
         <div className="sk-stat-card__label">{label}</div>
         {hint && (
@@ -93,7 +86,6 @@ function EquipmentMiniGrid({
       <div className="sk-eq-grid">
         {checks.map((q) => (
           <div key={q.class_key} className={`sk-eq${q.satisfied ? " sk-eq--ok" : " sk-eq--bad"}`}>
-            <EquipmentIcon classKey={q.class_key} className="sk-eq__icon" style={{ color: classColor(q.class_key) }} />
             <div className="sk-eq__count">
               <strong>{q.actual_qty}</strong><span> / {q.required_qty}</span>
             </div>
@@ -112,7 +104,6 @@ function EquipmentMiniGrid({
         <div className="sk-eq-grid">
           {fallbackGroups.map((g) => (
             <div key={g.classKey} className="sk-eq sk-eq--neutral">
-              <EquipmentIcon classKey={g.classKey} className="sk-eq__icon" style={{ color: classColor(g.classKey) }} />
               <div className="sk-eq__count">{g.count}</div>
               <div className="sk-eq__label">{g.label}</div>
             </div>
@@ -140,6 +131,8 @@ export function DashboardPage() {
     deviationWheelCleanup.current?.();
     deviationListRef.current = element;
     if (!element) return;
+    element.scrollTop = 0;
+    setDeviationIndex(0);
     let lastStep = 0;
     const wheel = (event: WheelEvent) => {
       if (element.scrollHeight <= element.clientHeight + 1 || !event.deltaY) return;
@@ -418,7 +411,7 @@ export function DashboardPage() {
   };
   const recentDeviations = [...(currentFinding ? [currentFinding] : []), weatherFinding];
 
-  const onlineCameraCount = cameras.filter((c) => c.stream_url).length;
+  const onlineCameraCount = cameras.filter((c) => c.stream_online).length;
 
   return (
     <div className="sk-dashboard">
@@ -488,7 +481,6 @@ export function DashboardPage() {
             </div>
       <div className="sk-stat-cards">
         <StatCard
-          icon={<CameraStatIcon />}
           value={<>{onlineCameraCount}<small> / {cameras.length}</small></>}
           label="Камеры онлайн"
           hint={
@@ -501,20 +493,17 @@ export function DashboardPage() {
           accent={cameras.length === 0 ? undefined : onlineCameraCount === cameras.length ? "ok" : "warning"}
         />
         <StatCard
-          icon={<EquipmentIcon classKey="excavator" />}
           value={selectedObservationId&&!activeObservation ? "…" : aiMarkupAvailable ? detectedGroups.length : dashboard.recognized_equipment_type_count}
           label="Типы техники"
           hint={aiMarkupAvailable ? "по разметке выбранного кадра" : "по последним снимкам камер"}
         />
         <StatCard
-          icon={<WarningStatIcon />}
           value={openDeviations.length}
           label="Открытые отклонения"
           hint={criticalOpenCount > 0 ? `Критических: ${criticalOpenCount}` : "Критических нет"}
           accent={openDeviations.length === 0 ? "ok" : criticalOpenCount > 0 ? "danger" : "warning"}
         />
         <StatCard
-          icon={<ChartStatIcon />}
           value={dashboard.plan_completion_percent !== null ? <>{dashboard.plan_completion_percent.toLocaleString("ru-RU")}<small>%</small></> : "—"}
           label="Готовность этапа"
           hint={dashboard.plan_completion_percent===null?"Нужен подтверждённый замер":dashboard.current_stage?.work_name??"Нет активного этапа"}
@@ -529,7 +518,7 @@ export function DashboardPage() {
               {cameras.length > 0 && (
                 <div className="sk-camera-card__pills">
                   {cameras.map((camera) => {
-                    const online = Boolean(camera.stream_url);
+                    const online = Boolean(camera.stream_online);
                     return (
                       <button
                         key={camera.camera_id}
@@ -757,7 +746,7 @@ export function DashboardPage() {
               </Link>
             </div>
             {recentDeviations.length === 0 && <p className="sk-empty-state">Отклонений не зафиксировано.</p>}
-            <ul className="sk-deviation-list" ref={setDeviationListRef} tabIndex={0} aria-label="Карточки отклонений. Прокрутка переключает карточку"
+            <ul key={`${projectId}:${currentFinding?.id ?? "loading"}`} className="sk-deviation-list" ref={setDeviationListRef} tabIndex={0} aria-label="Карточки отклонений. Прокрутка переключает карточку"
               onScroll={(event) => setDeviationIndex(Math.min(recentDeviations.length - 1, Math.max(0, Math.round(event.currentTarget.scrollTop / (event.currentTarget.clientHeight + 12)))))}>
 
               {recentDeviations.map((item) => {

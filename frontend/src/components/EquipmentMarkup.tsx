@@ -67,31 +67,12 @@ export function EquipmentPanel({ markup, result }: EquipmentPanelProps) {
     <div className="sk-panel sk-markup-panel">
       <div className="sk-markup-panel__head">
         <h2>Техника на фото</h2>
-        {markup.hasAi && (
-          <div className="sk-markup-toggle" role="group" aria-label="Источник разметки">
-            <button
-              type="button"
-              className={markup.source === "ai" ? "sk-markup-toggle__btn--active" : ""}
-              onClick={() => markup.setSource("ai")}
-              title="Техника определена ИИ-моделью по нашему списку классов"
-            >
-              ИИ
-            </button>
-            <button
-              type="button"
-              className={markup.source === "detector" ? "sk-markup-toggle__btn--active" : ""}
-              onClick={() => markup.setSource("detector")}
-              title="Открытый детектор YOLO-World (для сравнения)"
-            >
-              Детектор
-            </button>
-          </div>
-        )}
+        <span className="sk-markup-panel__source">Детектор</span>
       </div>
 
       {markup.source === "ai" ? (
         <p className="sk-markup-panel__note">
-          Определено ИИ-моделью строго по нашему списку классов техники. Рамки приблизительные.
+          Результат распознавания техники по заданному списку классов.
         </p>
       ) : (
         <p className="sk-markup-panel__note">

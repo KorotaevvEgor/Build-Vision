@@ -408,3 +408,4 @@
 .sk-sidebar-docs{display:flex;align-items:center;gap:10px;padding:12px 10px;margin-bottom:18px;border:1px solid var(--sk-border);border-radius:10px;color:var(--sk-text);font-size:11px;font-weight:600;line-height:1.55;text-decoration:none!important;background:var(--sk-surface)}.sk-sidebar-docs svg{width:22px;height:22px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.5}.sk-sidebar-docs>span:last-child{margin-left:auto;color:var(--sk-text-muted)}.sk-sidebar-docs:hover{border-color:#6d94e2;color:#3977ed}.sk-sidebar-docs:focus-visible{outline:2px solid #3977ed;outline-offset:3px}
 
 .sk-sidebar__brand{position:relative;min-height:84px}.sk-sidebar__close{position:absolute;right:-8px;top:-16px}
+.sk-sidebar-demo{margin-bottom:8px}.sk-sidebar-demo--active{border-color:var(--sk-accent);color:var(--sk-accent)}

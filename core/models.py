@@ -1099,3 +1099,65 @@ class RegistrationRequest(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+class CameraStreamConnection(models.Model):
+    camera = models.OneToOneField(Camera,on_delete=models.CASCADE,related_name='stream_connection')
+    source_ciphertext = models.TextField()
+    source_display = models.CharField(max_length=300,blank=True)
+    source_digest = models.CharField(max_length=64)
+    source_type = models.CharField(max_length=12,default='http')
+    enabled = models.BooleanField(default=False)
+    interval_minutes = models.PositiveIntegerField(default=15)
+    weekdays = models.JSONField(default=list)
+    window_start = models.TimeField(null=True,blank=True)
+    window_end = models.TimeField(null=True,blank=True)
+    timezone = models.CharField(max_length=100,default='Europe/Moscow')
+    daily_limit = models.PositiveIntegerField(default=1440)
+    analyze_frames = models.BooleanField(default=False)
+    revision = models.PositiveIntegerField(default=1)
+    next_capture_at = models.DateTimeField(null=True,blank=True,db_index=True)
+    last_success_at = models.DateTimeField(null=True,blank=True)
+    last_error_at = models.DateTimeField(null=True,blank=True)
+    last_error = models.CharField(max_length=300,blank=True)
+    consecutive_failures = models.PositiveIntegerField(default=0)
+    tested_source_digest = models.CharField(max_length=64,blank=True)
+    last_test_at = models.DateTimeField(null=True,blank=True)
+    lease_until = models.DateTimeField(null=True,blank=True)
+    lease_token = models.UUIDField(null=True,blank=True)
+    created_by = models.ForeignKey(User,null=True,on_delete=models.SET_NULL,related_name='+')
+    updated_by = models.ForeignKey(User,null=True,on_delete=models.SET_NULL,related_name='+')
+    updated_at = models.DateTimeField(auto_now=True)
+
+class StreamCapture(models.Model):
+    id = models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    connection = models.ForeignKey(CameraStreamConnection,null=True,blank=True,on_delete=models.SET_NULL,related_name='captures')
+    camera = models.ForeignKey(Camera,on_delete=models.CASCADE,related_name='stream_captures')
+    actor = models.ForeignKey(User,null=True,on_delete=models.SET_NULL)
+    purpose = models.CharField(max_length=12,default='scheduled')
+    source_ciphertext = models.TextField(blank=True)
+    source_digest = models.CharField(max_length=64,blank=True)
+    configuration_revision = models.PositiveIntegerField(default=1)
+    scheduled_for = models.DateTimeField(db_index=True)
+    started_at = models.DateTimeField(null=True,blank=True)
+    received_at = models.DateTimeField(null=True,blank=True)
+    finished_at = models.DateTimeField(null=True,blank=True)
+    status = models.CharField(max_length=24,default='pending',db_index=True)
+    image_path = models.TextField(blank=True)
+    sha256 = models.CharField(max_length=64,blank=True)
+    width = models.PositiveIntegerField(default=0)
+    height = models.PositiveIntegerField(default=0)
+    size_bytes = models.PositiveIntegerField(default=0)
+    error_code = models.CharField(max_length=40,blank=True)
+    error_message = models.CharField(max_length=300,blank=True)
+    observation = models.OneToOneField(Observation,null=True,blank=True,on_delete=models.SET_NULL,related_name='stream_capture')
+    lease_token = models.UUIDField(null=True,blank=True)
+    lease_until = models.DateTimeField(null=True,blank=True,db_index=True)
+    analysis_attempts = models.PositiveIntegerField(default=0)
+    analysis_explicit = models.BooleanField(default=False)
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=['connection','scheduled_for','purpose'],name='unique_stream_slot')]
+        ordering=['-scheduled_for']
+
+class StreamWorkerHeartbeat(models.Model):
+    key = models.CharField(max_length=40,primary_key=True,default='capture')
+    updated_at = models.DateTimeField()

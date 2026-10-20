@@ -1949,6 +1949,7 @@ def _run_observation_pipeline(
     image: UploadFile,
     require_zone_in_schedule: bool = True,
     captured_at: datetime | None = None,
+    source_observation_id: uuid.UUID | None = None,
 ) -> dict:
     """Общее тело анализа снимка: детекция, сопоставление с графиком, сохранение,
     обогащение ИИ. Используется и одиночной загрузкой снимка (create_project_observation),
@@ -1970,7 +1971,7 @@ def _run_observation_pipeline(
 
     config.UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
     suffix = Path(image.filename or "upload.jpg").suffix or ".jpg"
-    observation_uuid = uuid.uuid4()
+    observation_uuid = source_observation_id or uuid.uuid4()
     observation_id = str(observation_uuid)
     dest_path = config.UPLOADS_DIR / f"{observation_id}{suffix}"
 

@@ -12,6 +12,8 @@ import {
   type VlmConfidenceLevel,
 } from "../api";
 import "./SettingsPage.css";
+import {StreamSettings} from "../components/streams/StreamSettings";
+import {projectTimeZone} from "../components/projectTime";
 
 const ADMIN_URL = import.meta.env.VITE_ADMIN_URL ?? "/admin/";
 
@@ -119,6 +121,7 @@ export function SettingsPage() {
     <div className="sk-settings-page">
       <h1>Настройки проекта</h1>
 
+      <StreamSettings key={projectId} projectId={projectId} canEdit={isAdmin} timezone={projectTimeZone(project)}/>
       <div className="sk-settings-grid">
         <div className="sk-panel sk-settings-card">
           <h2>Профиль</h2>

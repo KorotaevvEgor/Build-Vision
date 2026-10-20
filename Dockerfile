@@ -29,6 +29,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
         git \
+        ffmpeg gcc libc6-dev \
         libgl1 \
         libglib2.0-0 \
         libxcb1 \
@@ -45,6 +46,7 @@ RUN pip install --no-cache-dir torch==2.8.0 torchvision==0.23.0 \
     && pip install --no-cache-dir -r backend/requirements.txt
 
 COPY backend/ backend/
+RUN gcc -shared -fPIC -O2 -o /app/stream-network-guard.so backend/app/streams/network_guard.c -ldl
 COPY manage.py manage.py
 COPY env_loader.py env_loader.py
 COPY admin_panel/ admin_panel/

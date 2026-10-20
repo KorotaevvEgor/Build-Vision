@@ -1071,6 +1071,7 @@ export interface ZoneDashboardSummary {
 }
 
 export interface CameraSummary {
+  stream_online?:boolean; stream_capture_enabled?:boolean; last_frame_received_at?:string|null;
   observation_count?: number;
   camera_id: string;
   name: string;
@@ -1514,3 +1515,17 @@ export function syncCorrectionTasks(projectId:ProjectId):Promise<{created:number
 export function trainCorrectionTasks(projectId:ProjectId,task_ids:number[]):Promise<{run:CorrectionRun}>{return requestJson(`/api/projects/${projectId}/correction-tasks/train`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task_ids})});}
 
 export function activateCorrectionModel(projectId:ProjectId,versionId:number):Promise<{version_id:number;status:string;site_id:number}>{return requestJson(`/api/projects/${projectId}/correction-models/${versionId}/activate`,{method:'POST'});}
+
+export interface StreamConnection {
+ id:number;camera_id:string;camera_name:string;zone_name:string;source_display:string;source_type:string;enabled:boolean;revision:number;interval_minutes:number;weekdays:number[];window_start:string|null;window_end:string|null;timezone:string;daily_limit:number;analyze_frames:boolean;last_success_at:string|null;last_error:string;next_capture_at:string|null;status:string;weekly_frames:number;
+}
+export interface StreamCaptureItem {id:string;status:string;status_label:string;purpose:string;received_at:string|null;scheduled_for:string;width:number;height:number;error_code:string;error_message:string;observation_id:string|null;image_url:string|null}
+export interface StreamList {items:StreamConnection[];cameras:{camera_id:string;name:string;zone_name:string}[];worker:{available:boolean;last_heartbeat_at:string|null};configured:boolean}
+export interface StreamSave {camera_id:string;source_url:string;interval_minutes:number;weekdays:number[];window_start:string|null;window_end:string|null;timezone:string;daily_limit:number;analyze_frames:boolean;enabled:boolean;revision?:number}
+export function fetchStreams(id:string|number):Promise<StreamList>{return requestJson(`/api/projects/${id}/streams`)}
+export function saveStream(id:string|number,data:StreamSave,connection?:number):Promise<{connection:StreamConnection}>{return requestJson(`/api/projects/${id}/streams${connection?`/${connection}`:''}`,{method:connection?'PATCH':'POST',body:JSON.stringify(data),headers:{'Content-Type':'application/json'}})}
+export function testStream(id:string|number,camera_id:string,source_url:string):Promise<{capture:StreamCaptureItem}>{return requestJson(`/api/projects/${id}/streams/test`,{method:'POST',body:JSON.stringify({camera_id,source_url}),headers:{'Content-Type':'application/json'}})}
+export function fetchStreamTest(id:string|number,testId:string):Promise<{capture:StreamCaptureItem}>{return requestJson(`/api/projects/${id}/streams/tests/${testId}`)}
+export function captureStream(id:string|number,connection:number):Promise<{capture:StreamCaptureItem}>{return requestJson(`/api/projects/${id}/streams/${connection}/capture`,{method:'POST'})}
+export function fetchStreamCaptures(id:string|number,connection:number,offset=0):Promise<{items:StreamCaptureItem[];total:number}>{return requestJson(`/api/projects/${id}/streams/${connection}/captures?offset=${offset}`)}
+export function analyzeStreamCapture(id:string|number,connection:number,captureId:string):Promise<{queued:boolean}>{return requestJson(`/api/projects/${id}/streams/${connection}/captures/${captureId}/analyze`,{method:'POST'})}

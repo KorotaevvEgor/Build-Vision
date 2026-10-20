@@ -1228,3 +1228,13 @@
 .sk-dashboard__overview .sk-eq__label {font-size:11px;line-height:1.35;}
 .sk-dashboard__overview .sk-eq__status {font-size:10px;line-height:1.35;}
 .sk-dashboard__overview .sk-eq__caption {font-size:9px;line-height:1.35;}
+/* Text-first overview: reserve space for labels and aligned counters. */
+.sk-dashboard .sk-dashboard__overview .sk-stat-card{grid-template-columns:minmax(0,1fr) 43px;gap:9px}
+.sk-dashboard .sk-dashboard__overview .sk-stat-card__label{font-size:12px;line-height:1.4}
+.sk-dashboard .sk-dashboard__overview .sk-stat-card__hint{font-size:11px;line-height:1.4}
+.sk-dashboard .sk-dashboard__overview .sk-stat-card__value{font-size:24px}
+.sk-dashboard .sk-dashboard__overview .sk-eq{justify-content:center;gap:5px}
+.sk-dashboard .sk-dashboard__overview .sk-eq__count{font-size:23px}
+.sk-dashboard__overview .sk-eq__label{font-size:12px;line-height:1.35}
+.sk-dashboard__overview .sk-eq__status{font-size:11px;line-height:1.35}
+.sk-dashboard__overview .sk-eq__caption{font-size:10px;line-height:1.35}

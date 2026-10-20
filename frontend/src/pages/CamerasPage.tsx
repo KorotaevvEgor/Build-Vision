@@ -36,7 +36,7 @@ export function CamerasPage() {
   }
 
   const selectedCamera=cameras.find(c=>c.camera_id===selectedId)??cameras[0];
-  const onlineCount = cameras.filter((c) => c.stream_url).length;
+  const onlineCount = cameras.filter((c) => c.stream_online).length;
   const offlineCount = cameras.length - onlineCount;
 
   return (
@@ -70,7 +70,7 @@ export function CamerasPage() {
 
       <div className="sk-cameras-workspace"><section className="sk-cameras-workspace__list sk-cameras-list-card" aria-label="Камеры проекта"><header><h2>Камеры</h2><p>Снимки и история наблюдений по каждой камере</p></header><div className="sk-cameras-grid">
         {cameras.map((camera) => {
-          const online = Boolean(camera.stream_url);
+          const online = Boolean(camera.stream_online);
           return (
             <article key={camera.camera_id} className="sk-camera-tile"><Link className="sk-camera-tile__select" aria-label={`Открыть камеру: ${camera.name}`} to={`/projects/${projectId}/cameras/${camera.camera_id}`}>
               <div className="sk-camera-tile__media">

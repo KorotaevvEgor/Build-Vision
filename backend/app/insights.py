@@ -62,7 +62,7 @@ def list_cameras(site=None) -> list[dict]:
 
     from django.db.models import Count
 
-    qs = Camera.objects.select_related("zone").filter(**_site_filter_kwargs(site)).annotate(frame_count=Count("observations"))
+    qs = Camera.objects.select_related("zone", "stream_connection").filter(**_site_filter_kwargs(site)).annotate(frame_count=Count("observations"))
     cameras = []
     for cam in qs:
         latest = _latest_observation_for_zone(cam.zone.external_id, site=site)
@@ -75,6 +75,7 @@ def list_cameras(site=None) -> list[dict]:
                 "latitude": cam.latitude,
                 "longitude": cam.longitude,
                 "stream_url": cam.stream_url,
+                **camera_stream_state(cam),
                 "is_demo": cam.is_demo,
                 "observation_count": cam.frame_count,
                 "latest_observation": _observation_summary(latest) if latest else None,
@@ -88,7 +89,7 @@ def get_camera(camera_id: str, site=None) -> dict | None:
         return None
     from core.models import Camera
 
-    cam_qs = Camera.objects.select_related("zone").filter(
+    cam_qs = Camera.objects.select_related("zone", "stream_connection").filter(
         external_id=camera_id, **_site_filter_kwargs(site)
     )
     cam = cam_qs.first()
@@ -111,6 +112,7 @@ def get_camera(camera_id: str, site=None) -> dict | None:
         "latitude": cam.latitude,
         "longitude": cam.longitude,
         "stream_url": cam.stream_url,
+                **camera_stream_state(cam),
         "is_demo": cam.is_demo,
         "latest_observation": _observation_summary(recent_list[0]) if recent_list else None,
         "recent_observations": [_observation_summary(o) for o in recent_list],
@@ -330,3 +332,10 @@ def dashboard_summary(
         "top_risk_factor": top_risk_factor,
         "recent_deviations": notifications(limit=5, site=site)["items"],
     }
+
+def camera_stream_state(camera):
+    from core.models import CameraStreamConnection
+    try:c=camera.stream_connection
+    except CameraStreamConnection.DoesNotExist:return {'stream_online':False,'stream_capture_enabled':False,'last_frame_received_at':None}
+    now=datetime.now(UTC)
+    return {'stream_online':bool(c.enabled and c.last_success_at and now-c.last_success_at<timedelta(minutes=max(c.interval_minutes*2,5))),'stream_capture_enabled':c.enabled,'last_frame_received_at':c.last_success_at.isoformat() if c.last_success_at else None}

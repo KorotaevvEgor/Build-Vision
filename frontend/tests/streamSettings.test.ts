@@ -1,0 +1,4 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {validateStreamForm,weeklyEstimate} from '../src/components/streams/streamSettingsModel.ts';
+test('quarter-hour capture and quota',()=>{assert.equal(weeklyEstimate(15,7,24,1440),672);assert.equal(weeklyEstimate(1,7,24,100),700)});
+test('validates interval and days',()=>{assert.ok(validateStreamForm({camera_id:'c',source_url:'https://camera/live',interval_minutes:0,weekdays:[1],window_start:'',window_end:'',daily_limit:1440},false));assert.ok(validateStreamForm({camera_id:'c',source_url:'https://camera/live',interval_minutes:15,weekdays:[],window_start:'',window_end:'',daily_limit:1440},false));});
+test('masked address remains blank while editing; nights accepted',()=>{assert.equal(validateStreamForm({camera_id:'c',source_url:'',interval_minutes:15,weekdays:[1],window_start:'22:00',window_end:'06:00',daily_limit:1440},true),'');});

@@ -51,6 +51,7 @@ from .security import ApiRequestGuard
 from .registration import router as registration_router
 from .documentation_router import router as documentation_router
 from .correction_tasks import router as correction_tasks_router
+from .streams.router import router as streams_router
 from .weather import fetch_forecast
 from .weather_matching import evaluate_weather_risks
 
@@ -78,6 +79,7 @@ app.include_router(projects_router)
 app.include_router(registration_router)
 app.include_router(documentation_router)
 app.include_router(correction_tasks_router)
+app.include_router(streams_router)
 
 
 @app.get("/api/admin/analysis-queue")
